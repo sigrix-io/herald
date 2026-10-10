@@ -126,7 +126,9 @@ a platform's host, never a path, since a path can carry a token.
 
 `herald auth` is the one command that hands over a credential, because signing in is how LinkedIn
 gives one. It writes the token to a pipe or to a file you name, created readable by you
-alone, and refuses to print it on a terminal.
+alone, and refuses to print it on a terminal. The address it shows for signing in is a page of its
+own on this machine, `http://localhost:8765/`, which sends the browser on to LinkedIn, so the
+sign-in's state is never printed.
 
 ## Channels
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import threading
 import urllib.parse
 import urllib.request
 from datetime import UTC, datetime, timedelta
@@ -13,6 +12,7 @@ from herald import CheckResult, NotPosted, http
 from herald.channels.linkedin import LinkedInChannel
 from herald.channels.linkedin_page import LinkedInPageChannel
 from herald.posting import redact
+from linkedin_browser import browser
 
 APP = {
     "HERALD_LINKEDIN_PAGE_CLIENT_ID": "78pagefghijklm",
@@ -148,24 +148,13 @@ def test_check_names_what_is_missing() -> None:
     )
 
 
-def _browser(code: str = "code-from-linkedin"):
-    """A browser that follows the sign-in address back to the callback, from another thread."""
-
-    def follow(address: str) -> None:
-        query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(address).query))
-        back = {"state": query["state"], "code": code}
-        callback = query["redirect_uri"].replace("localhost", "127.0.0.1") + "?" + urllib.parse.urlencode(back)
-        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-        threading.Thread(target=lambda: opener.open(callback, timeout=5).read(), daemon=True).start()
-
-    return follow
-
-
 def test_signing_in_returns_the_refresh_token_and_when_it_lapses(replay) -> None:
     replay("linkedin_page/sign_in", APP)
-    said: list[str] = []
+    sent_to: list[str] = []
 
-    result = LinkedInPageChannel().sign_in(APP, port=0, open_browser=_browser(), say=said.append, wait=10)
+    result = LinkedInPageChannel().sign_in(
+        APP, port=0, open_browser=browser(sent_to=sent_to), say=lambda text: None, wait=10
+    )
 
     assert result.secret == "HERALD_LINKEDIN_PAGE_REFRESH_TOKEN"
     assert result.settings["HERALD_LINKEDIN_PAGE_REFRESH_TOKEN"] == "AQW-new-page-refresh-token-0123456789"
@@ -176,14 +165,15 @@ def test_signing_in_returns_the_refresh_token_and_when_it_lapses(replay) -> None
     assert result.summary.endswith(
         "Set HERALD_LINKEDIN_PAGE_ORGANIZATION to the page's number, from linkedin.com/company/NUMBER/admin."
     )
-    assert "scope=w_organization_social&" in said[0] or said[0].endswith("scope=w_organization_social")
+    [sign_in] = sent_to
+    assert dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(sign_in).query))["scope"] == "w_organization_social"
 
 
 def test_an_app_given_no_refresh_token_signs_in_with_the_access_token(replay) -> None:
     replay("linkedin_page/sign_in_without_refresh", APP)
     env = {**APP, "HERALD_LINKEDIN_PAGE_ORGANIZATION": "2414183"}
 
-    result = LinkedInPageChannel().sign_in(env, port=0, open_browser=_browser(), say=lambda text: None, wait=10)
+    result = LinkedInPageChannel().sign_in(env, port=0, open_browser=browser(), say=lambda text: None, wait=10)
 
     assert result.secret == "HERALD_LINKEDIN_PAGE_TOKEN"
     assert result.settings["HERALD_LINKEDIN_PAGE_TOKEN"] == "AQV-new-page-access-token-0123456789"

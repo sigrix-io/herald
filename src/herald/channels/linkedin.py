@@ -78,16 +78,27 @@ def browser_sign_in(
 ) -> tuple[str, str]:
     """Send the browser to LinkedIn's sign-in and wait for it to come back, once, for ``wait`` seconds.
 
-    LinkedIn sends the browser back to ``http://localhost:PORT/callback``, where a server on the
-    loopback address waits for it. Returns the authorization code and the address it came back to,
-    which exchanging the code needs.
+    A server on the loopback address does both ends. The browser, and the person if none opens, are
+    given its start page, ``http://localhost:PORT/``, which sends the browser on to LinkedIn's
+    sign-in. So LinkedIn's address, which holds the app's id and the sign-in's state, is never
+    printed, nor handed to the program that opens the browser. LinkedIn sends the browser back to
+    ``http://localhost:PORT/callback``. Returns the authorization code and the address it came
+    back to, which exchanging the code needs.
     """
     state = secrets.token_urlsafe(24)
     received: dict[str, str] = {}
+    sign_in = ""  # LinkedIn's address, once the server's port is known
 
     class Callback(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
             parts = urllib.parse.urlsplit(self.path)
+            if parts.path == "/":
+                self.send_response(302)
+                self.send_header("Location", sign_in)
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
             if parts.path != "/callback":
                 self.send_error(404)
                 return
@@ -103,7 +114,8 @@ def browser_sign_in(
             """Say nothing: the request line holds the sign-in code."""
 
     with HTTPServer(("127.0.0.1", port), Callback) as server:
-        redirect = f"http://localhost:{server.server_port}/callback"
+        start = f"http://localhost:{server.server_port}/"
+        redirect = f"{start}callback"
         query = {
             "response_type": "code",
             "client_id": client,
@@ -111,9 +123,9 @@ def browser_sign_in(
             "state": state,
             "scope": scopes,
         }
-        address = f"{OAUTH}/authorization?{urllib.parse.urlencode(query)}"
-        say(f"Sign in to LinkedIn in the browser. If none opens, visit:\n{address}")
-        open_browser(address)
+        sign_in = f"{OAUTH}/authorization?{urllib.parse.urlencode(query)}"
+        say(f"Sign in to LinkedIn in the browser. If none opens, visit {start}")
+        open_browser(start)
         server.timeout = 0.5
         deadline = time.monotonic() + wait
         while not received and time.monotonic() < deadline:

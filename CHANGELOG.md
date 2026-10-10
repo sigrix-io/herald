@@ -21,6 +21,9 @@ Two channels, and nothing that changes the channel or ledger interface.
   2026) instead of asking X, which bills every call.
 - `herald.counting.clusters` cuts text into the characters a reader sees, as `graphemes` counts
   them.
+- `herald auth` shows, and opens, a start page on this machine, `http://localhost:8765/`, which
+  sends the browser on to LinkedIn's sign-in. LinkedIn's address, with the app's id and the
+  sign-in's state, is no longer printed or handed to the program that opens the browser.
 - An error that a platform words as an RFC 9457 problem, with `detail` and `title`, is quoted as
   it says it.
 
