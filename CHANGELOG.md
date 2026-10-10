@@ -3,7 +3,7 @@
 Herald follows [semantic versioning](https://semver.org). Until 1.0, a minor version may change
 the channel interface or the ledger's interface, and its entry here says how.
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-10-10)
 
 The first release.
 
