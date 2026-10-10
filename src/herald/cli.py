@@ -1,5 +1,5 @@
-"""The ``herald`` command: ``channels``, ``preview``, ``post``, ``check``, ``status``, ``resolve``,
-``auth`` and ``mcp``.
+"""The ``herald`` command: ``channels``, ``preview``, ``post``, ``watch``, ``check``, ``status``,
+``resolve``, ``auth`` and ``mcp``.
 
 ``preview`` never touches the network, and ``post`` takes only a draft id that ``preview``
 printed. Exit status: 0 when the command did what it was asked, 1 when it did not (a channel not
@@ -11,20 +11,18 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import shlex
-import subprocess
 import sys
 import webbrowser
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-from herald import __version__, mcp
+from herald import __version__, feeds, mcp
 from herald.announcement import Announcement
 from herald.channels import ChannelConflict, UnknownChannel, discover_channels, get_channel
 from herald.drafts import TooLong
 from herald.ledger import HOLDING, JsonLinesLedger, LedgerBusy
-from herald.posting import UnknownDraft, check, post, preview, resolve
+from herald.posting import UnknownDraft, _shell_word, check, post, preview, resolve
 
 
 def _names(values: Sequence[str] | None) -> list[str]:
@@ -51,11 +49,6 @@ def _print_table(rows: Sequence[Sequence[str]]) -> None:
 
 def _ledger(args: argparse.Namespace) -> JsonLinesLedger:
     return JsonLinesLedger(args.ledger_dir)
-
-
-def _shell_word(text: str) -> str:
-    """``text`` quoted for the shell a person here would paste it into."""
-    return subprocess.list2cmdline([text]) if os.name == "nt" else shlex.quote(text)
 
 
 def _ledger_option(args: argparse.Namespace) -> str:
@@ -142,6 +135,47 @@ def _post(args: argparse.Namespace) -> int:
     return 0 if all(outcome.ok for outcome in outcomes) else 1
 
 
+def _watch(args: argparse.Namespace) -> int:
+    names = _names(args.to)
+    if not names:
+        raise ValueError("choose at least one channel with --to")
+    feeds.check_text(args.text)
+    source = feeds.shown(args.feed)
+    report = feeds.watch(
+        feeds.read_feed(args.feed),
+        feeds.feed_key(args.feed),
+        names,
+        _ledger(args),
+        text=args.text,
+        most=args.most,
+        mark_seen=args.mark_seen,
+    )
+    if args.json:
+        _print_json({"source": source, **report.to_json()})
+        return 0 if report.ok else 1
+    for name, count in report.recorded.items():
+        items = "item" if count == 1 else "items"
+        print(f"{name}: recorded the {count} {items} {source} holds now as seen, and posted none of them.")
+    for name, missing in report.missing.items():
+        print(f"{name}: not ready: set {', '.join(missing)}. Its new items wait until then.")
+    for item, outcomes in report.posted:
+        print(f"{item.title or item.id}:")
+        for outcome in outcomes:
+            print(f"  {outcome.describe()}")
+    for item, reason in report.refused:
+        print(f"{item.title or item.id}: not posted: {reason}")
+    if report.held:
+        count = len(report.held)
+        print(
+            f"{count} items are new, more than --most {args.most}, so none was posted: if the feed changed its "
+            f"items' ids, they are old ones. To post them, run this again with --most {count}; to pass over them, "
+            "with --mark-seen."
+        )
+    if not (report.recorded or report.missing or report.posted or report.refused or report.held):
+        print(f"Nothing new in {source}.")
+    return 0 if report.ok else 1
+
+
 def _check(args: argparse.Namespace) -> int:
     results = check(_names(args.to) or None)
     if args.json:
@@ -167,7 +201,8 @@ def _status(args: argparse.Namespace) -> int:
         if entry.state == "sending":
             note = (
                 f"its result was never recorded: check {entry.channel}, then run "
-                f"herald resolve {entry.announcement_id} {entry.channel}{_ledger_option(args)} --posted or --not-posted"
+                f"herald resolve {_shell_word(entry.announcement_id)} {entry.channel}{_ledger_option(args)} "
+                "--posted or --not-posted"
             )
         elif entry.state == "drafted":
             note = f"draft {entry.draft_id}, not posted"
@@ -282,6 +317,36 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub = command("post", _post, "post a draft that preview made, once per channel", ledger_option, json_option)
     sub.add_argument("draft_id", metavar="DRAFT_ID", help="the id preview printed")
+
+    sub = command(
+        "watch",
+        _watch,
+        "post each new item of an RSS or Atom feed, such as a repository's releases, once; the first run for a "
+        "channel records what the feed holds and posts none of it",
+        ledger_option,
+        json_option,
+    )
+    sub.add_argument(
+        "feed",
+        metavar="FEED",
+        help="an https address, such as https://github.com/OWNER/REPO/releases.atom, or a file",
+    )
+    sub.add_argument("--to", action="append", metavar="CHANNEL", help="a channel to post to; repeat it, or use commas")
+    sub.add_argument(
+        "--text",
+        default=feeds.TEXT,
+        help="what each post says, with {title}, {link} and {feed} filled in; the item's link is added where it "
+        "is missing (default: {title})",
+    )
+    sub.add_argument(
+        "--most",
+        type=int,
+        default=feeds.MOST,
+        help=f"the most items one run posts; with more new than this, it posts none (default: {feeds.MOST})",
+    )
+    sub.add_argument(
+        "--mark-seen", action="store_true", help="record every item the feed holds now as seen, and post none"
+    )
 
     sub = command("check", _check, "check each channel's credentials, without showing any value", json_option)
     sub.add_argument("--to", action="append", metavar="CHANNEL", help="a channel to check (default: every one)")

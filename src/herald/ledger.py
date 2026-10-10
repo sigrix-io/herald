@@ -1,4 +1,4 @@
-"""The ledger: the drafts previews made, and what happened to each post.
+"""The ledger: the drafts previews made, what happened to each post, and what each watched feed held.
 
 Each announcement and channel moves from *drafted* to *sending*, then to *posted* or *failed*.
 A post is recorded as *sending* before the platform is asked, so a crash between the two leaves
@@ -6,9 +6,11 @@ that record behind, and an entry left in *sending* is never retried on its own: 
 already have the post. ``herald status`` shows it, a person checks the platform, and ``herald
 resolve`` records what they found.
 
-:class:`Ledger` is the interface. :class:`JsonLinesLedger` keeps it in two append-only files in
-one directory, which suits the command line and a CI job that caches the directory. An
-application with a database of its own implements the interface over that instead.
+:class:`Ledger` is the interface. :class:`JsonLinesLedger` keeps it in append-only files in one
+directory, which suits the command line and a CI job that caches the directory. An application
+with a database of its own implements the interface over that instead. ``JsonLinesLedger`` also
+keeps, for :func:`herald.feeds.watch`, the items each feed held when it was first watched into
+each channel.
 """
 
 from __future__ import annotations
@@ -121,7 +123,7 @@ def default_ledger_dir() -> Path:
 
 
 class JsonLinesLedger:
-    """A ledger in ``drafts.jsonl`` and ``ledger.jsonl`` under ``directory``. Append-only.
+    """A ledger in ``drafts.jsonl``, ``ledger.jsonl`` and ``watched.jsonl`` under ``directory``. Append-only.
 
     Every write holds ``ledger.lock``, created exclusively, so two processes sharing the
     directory cannot both claim a post. A process killed while writing can leave the lock
@@ -133,6 +135,7 @@ class JsonLinesLedger:
         self.lock_timeout = lock_timeout
         self._drafts = self.directory / "drafts.jsonl"
         self._entries = self.directory / "ledger.jsonl"
+        self._watched = self.directory / "watched.jsonl"
         self._lock = self.directory / "ledger.lock"
 
     @contextmanager
@@ -220,6 +223,21 @@ class JsonLinesLedger:
     def latest(self, announcement_id: str | None = None) -> list[Entry]:
         entries = self._standing().values()
         return [entry for entry in entries if announcement_id is None or entry.announcement_id == announcement_id]
+
+    def seen(self, feed: str, channel: str) -> frozenset[str] | None:
+        """The items ``feed`` held when it was first watched into ``channel``; ``None`` if it never was."""
+        found: frozenset[str] | None = None
+        for record in self._read(self._watched):
+            if record.get("feed") == feed and record.get("channel") == channel:
+                items = record.get("items")
+                found = (found or frozenset()) | frozenset(map(str, items if isinstance(items, list) else ()))
+        return found
+
+    def record_seen(self, feed: str, channel: str, items: Iterable[str]) -> None:
+        """Keep ``items`` as seen for ``feed`` in ``channel``, so a watch never posts them there."""
+        record = {"feed": feed, "channel": channel, "items": sorted(set(items)), "at": now()}
+        with self._locked():
+            self._append(self._watched, record)
 
 
 __all__ = [

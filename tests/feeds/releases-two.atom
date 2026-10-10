@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A repository's releases feed, https://github.com/OWNER/REPO/releases.atom, with two: v1.2.0 published since releases-one.atom.
+     Written to the shape of GitHub's feed; CI reads a live one to check the shape still holds. -->
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xml:lang="en-US">
+  <id>tag:github.com,2008:https://github.com/octo/widget/releases</id>
+  <link type="text/html" rel="alternate" href="https://github.com/octo/widget/releases"/>
+  <link type="application/atom+xml" rel="self" href="https://github.com/octo/widget/releases.atom"/>
+  <title>Release notes from widget</title>
+  <updated>2026-10-08T09:30:00Z</updated>
+  <entry>
+    <id>tag:github.com,2008:Repository/123456789/v1.2.0</id>
+    <updated>2026-10-08T09:30:00Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/octo/widget/releases/tag/v1.2.0"/>
+    <title>Widget 1.2: a faster importer</title>
+    <content type="html">&lt;h2&gt;What&amp;#39;s Changed&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;The importer reads files in parallel.&lt;/li&gt;
+&lt;/ul&gt;</content>
+    <author>
+      <name>octo</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/583231?s=60&amp;v=4"/>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/123456789/v1.1.0</id>
+    <updated>2026-09-21T14:05:12Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/octo/widget/releases/tag/v1.1.0"/>
+    <title>v1.1.0</title>
+    <content type="html">&lt;h2&gt;What&amp;#39;s Changed&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;Export to CSV by &lt;a class=&quot;user-mention notranslate&quot; data-hovercard-type=&quot;user&quot; href=&quot;https://github.com/octo&quot;&gt;@octo&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;</content>
+    <author>
+      <name>octo</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/583231?s=60&amp;v=4"/>
+  </entry>
+</feed>

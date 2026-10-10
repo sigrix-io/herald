@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- RSS 1.0, whose items stand beside the channel rather than inside it. -->
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/">
+  <channel rdf:about="https://news.example/">
+    <title>News, the RDF way</title>
+    <link>https://news.example/</link>
+    <description>Older feeds still say it this way.</description>
+    <items>
+      <rdf:Seq>
+        <rdf:li rdf:resource="https://news.example/2"/>
+        <rdf:li rdf:resource="https://news.example/1"/>
+      </rdf:Seq>
+    </items>
+  </channel>
+  <item rdf:about="https://news.example/2">
+    <title>Second</title>
+    <link>https://news.example/2</link>
+  </item>
+  <item rdf:about="https://news.example/1">
+    <title>First</title>
+    <link>https://news.example/1</link>
+  </item>
+</rdf:RDF>

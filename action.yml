@@ -1,0 +1,100 @@
+name: Herald
+description: Announce each new release, or each new item of any RSS or Atom feed, on Bluesky, Mastodon, Discord, Slack, Telegram or LinkedIn, once.
+branding:
+  icon: radio
+  color: purple
+
+# A step that uses this action sets each channel's credentials in its env, from secrets, as in
+# the README. The ledger, which keeps what was posted, lives in the Actions cache between runs,
+# under a key that names the git ref: a run on another ref, such as a release's tag or a pull
+# request, keeps a ledger of its own, and so records what the feed holds and posts nothing.
+
+inputs:
+  to:
+    description: The channels to post to, separated by commas, such as bluesky,mastodon.
+    required: true
+  feed:
+    description: The feed to watch, an https address or a file. By default, this repository's releases.
+    default: https://github.com/${{ github.repository }}/releases.atom
+  text:
+    description: What each post says. {title}, {link} and {feed} are filled in, and the item's link is added where it is missing.
+    default: "{title}"
+  most:
+    description: The most items one run posts. With more new than this, it posts none and fails, since that many at once means the feed changed its items' ids.
+    default: "5"
+  ledger:
+    description: The name this watch's ledger is cached under. Give each watch in a repository its own. Letters, digits, dots, dashes and underscores.
+    default: herald
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: "3.14"
+
+    - name: Install Herald
+      shell: bash
+      run: python -m pip install --disable-pip-version-check --no-input --quiet "$GITHUB_ACTION_PATH"
+
+    - name: Name the ledger
+      id: ledger
+      shell: bash
+      env:
+        NAME: ${{ inputs.ledger }}
+      run: |
+        if ! [[ "$NAME" =~ ^[A-Za-z0-9._-]+$ ]]; then
+          echo "::error::The ledger input may hold letters, digits, dots, dashes and underscores only."
+          exit 1
+        fi
+        prefix="herald/$NAME/${GITHUB_REF//,/_}/"
+        {
+          echo "dir=$RUNNER_TEMP/herald-ledger-$NAME"
+          echo "prefix=$prefix"
+          echo "key=$prefix$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$(python -c 'import uuid; print(uuid.uuid4().hex)')"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Restore the ledger
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.ledger.outputs.dir }}
+        key: ${{ steps.ledger.outputs.key }}
+        restore-keys: ${{ steps.ledger.outputs.prefix }}
+
+    - name: Post what is new
+      id: watch
+      shell: bash
+      env:
+        HERALD_LEDGER_DIR: ${{ steps.ledger.outputs.dir }}
+        FEED: ${{ inputs.feed }}
+        TO: ${{ inputs.to }}
+        TEXT: ${{ inputs.text }}
+        MOST: ${{ inputs.most }}
+      run: herald watch "$FEED" --to "$TO" --text "$TEXT" --most "$MOST"
+
+    - name: Find the ledger
+      id: found
+      if: always() && steps.watch.outcome != 'skipped'
+      shell: bash
+      env:
+        LEDGER: ${{ steps.ledger.outputs.dir }}
+      run: if [ -d "$LEDGER" ]; then echo "ledger=yes" >> "$GITHUB_OUTPUT"; fi
+
+    - name: Save the ledger
+      if: always() && steps.found.outputs.ledger == 'yes'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.ledger.outputs.dir }}
+        key: ${{ steps.ledger.outputs.key }}
+
+    # Saving only warns when it fails. A ledger that was not saved means the next run does not
+    # know what this one posted, and posts it again, so a failed save fails the run.
+    - name: Check the ledger was saved, so the next run posts nothing twice
+      if: always() && steps.found.outputs.ledger == 'yes'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.ledger.outputs.dir }}
+        key: ${{ steps.ledger.outputs.key }}
+        lookup-only: "true"
+        fail-on-cache-miss: "true"
