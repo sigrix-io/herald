@@ -401,10 +401,9 @@ provides.
 ## Where it fits
 
 Herald is one of [Sigrix](https://sigrix.io)'s open-source projects, and nothing in it is specific
-to Sigrix. Its neighbours on the map are planned rather than built: sigrix.io will announce each
-update it publishes on its Hub through Herald, keeping Herald's ledger in its own store, and
-Bailey, Sigrix's assistant, will reach Herald through `herald mcp`. The rest of the family,
-and how it fits together, is at [sigrix.io/open-source](https://sigrix.io/open-source).
+to Sigrix. Its neighbour on the map is sigrix.io, which announces each update it publishes on its
+Hub through Herald, keeping Herald's ledger in its own store. The rest of the family, and how it
+fits together, is at [sigrix.io/open-source](https://sigrix.io/open-source).
 
 ## License
 
