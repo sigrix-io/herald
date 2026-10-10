@@ -14,5 +14,10 @@ The first release.
 - Post: sends only a draft a preview made, once per announcement and channel.
 - The ledger interface, and a JSON-lines ledger as the default. A post whose result went
   unrecorded is shown for a person to check, never retried on its own.
-- Channels as plugins under the `herald.channels` entry point group, with the `stdout` channel.
-- The `herald` command: `channels`, `preview`, `post`, `check`, `status` and `resolve`.
+- Channels as plugins under the `herald.channels` entry point group.
+- The channels: `bluesky`, `mastodon`, `discord`, `slack`, `telegram`, `linkedin` (a person's
+  profile) and `stdout`, each counting the way its platform does.
+- `herald.http`: requests over https only, never following a redirect, with each failure read
+  as not posted (safe to try again) or uncertain (left for a person).
+- The `herald` command: `channels`, `preview`, `post`, `check`, `status`, `resolve`, and
+  `auth linkedin`, which signs in on localhost and hands the token only to a pipe or a file.

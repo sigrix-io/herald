@@ -49,6 +49,19 @@ class PostResult:
 
 
 @dataclass(frozen=True)
+class SignIn:
+    """What signing in to a platform produced, for a channel whose credentials come from a sign-in.
+
+    ``settings`` are the variables to keep, ``secret`` names the one among them that is a
+    credential, and ``summary`` says who signed in and for how long.
+    """
+
+    settings: Mapping[str, str]
+    secret: str
+    summary: str
+
+
+@dataclass(frozen=True)
 class CheckResult:
     """Whether a channel's credentials work, in words a person can act on."""
 
@@ -64,7 +77,8 @@ class Channel:
     #: What a person calls it.
     label: ClassVar[str] = ""
     #: The longest post the platform takes, counted by :meth:`count`; ``None`` for no limit.
-    limit: ClassVar[int | None] = None
+    #: A channel whose limit depends on where it posts sets it per instance.
+    limit: int | None = None
     #: The environment variables the channel reads its credentials from.
     credentials: ClassVar[tuple[str, ...]] = ()
 
@@ -81,7 +95,12 @@ class Channel:
 
     def missing_credentials(self, env: Mapping[str, str]) -> list[str]:
         """The credential variables that are unset or empty."""
-        return [name for name in self.credentials if not str(env.get(name) or "").strip()]
+        return [name for name in self.credentials if not self.setting(env, name)]
+
+    @staticmethod
+    def setting(env: Mapping[str, str], name: str, default: str = "") -> str:
+        """The variable ``name`` from ``env``, stripped, or ``default`` when it is unset or blank."""
+        return str(env.get(name) or "").strip() or default
 
     def check(self, env: Mapping[str, str]) -> CheckResult:
         """Whether the credentials are there. A channel that can ask its platform should."""
@@ -172,6 +191,7 @@ __all__ = [
     "Installed",
     "NotPosted",
     "PostResult",
+    "SignIn",
     "UnknownChannel",
     "available_channels",
     "discover_channels",

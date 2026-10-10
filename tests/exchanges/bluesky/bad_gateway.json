@@ -1,0 +1,66 @@
+[
+  {
+    "note": "createSession with an app password; AT Protocol, com.atproto.server.createSession and com.atproto.repo.createRecord (docs.bsky.app)",
+    "request": {
+      "method": "POST",
+      "url": "https://bsky.social/xrpc/com.atproto.server.createSession",
+      "json": {
+        "identifier": "{HERALD_BLUESKY_HANDLE}",
+        "password": "{HERALD_BLUESKY_APP_PASSWORD}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "did": "did:plc:z72i7hdynmk6r22z27h6tvur",
+        "handle": "herald-test.bsky.social",
+        "accessJwt": "eyJ0eXAiOiJhdCtqd3QiLCJhbGciOiJFUzI1NksifQ.session-access",
+        "refreshJwt": "eyJ0eXAiOiJyZWZyZXNoK2p3dCJ9.session-refresh",
+        "active": true
+      }
+    }
+  },
+  {
+    "note": "a 502 from the edge after the request reached it: the post may exist",
+    "request": {
+      "method": "POST",
+      "url": "https://bsky.social/xrpc/com.atproto.repo.createRecord",
+      "headers": {
+        "Authorization": "Bearer eyJ0eXAiOiJhdCtqd3QiLCJhbGciOiJFUzI1NksifQ.session-access"
+      },
+      "json": {
+        "repo": "did:plc:z72i7hdynmk6r22z27h6tvur",
+        "collection": "app.bsky.feed.post",
+        "record": {
+          "$type": "app.bsky.feed.post",
+          "text": "Version 2.0 is out \u2014 read about it: https://example.com/releases/2.0",
+          "createdAt": "*",
+          "facets": [
+            {
+              "index": {
+                "byteStart": 38,
+                "byteEnd": 70
+              },
+              "features": [
+                {
+                  "$type": "app.bsky.richtext.facet#link",
+                  "uri": "https://example.com/releases/2.0"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "response": {
+      "status": 502,
+      "headers": {
+        "Content-Type": "text/html"
+      },
+      "text": "<html><body>502 Bad Gateway</body></html>"
+    }
+  }
+]

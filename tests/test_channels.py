@@ -86,10 +86,12 @@ def test_a_plugin_that_fails_to_import_is_named_rather_than_raised(install_plugi
 
 
 def test_an_unknown_channel_names_the_installed_ones(capsys) -> None:
-    with pytest.raises(UnknownChannel, match="no channel called 'nowhere'; installed: stdout"):
+    installed = ", ".join(found.name for found in discover_channels())
+    assert "stdout" in installed
+    with pytest.raises(UnknownChannel, match=f"no channel called 'nowhere'; installed: {installed}$"):
         get_channel("nowhere")
     assert main(["preview", "--to", "nowhere", "--text", "Hello"]) == 1
-    assert "installed: stdout" in capsys.readouterr().err
+    assert f"installed: {installed}" in capsys.readouterr().err
 
 
 def test_a_channel_needs_a_lower_case_name() -> None:

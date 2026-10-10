@@ -1,0 +1,22 @@
+[
+  {
+    "note": "a deleted webhook; Discord API, Get Webhook with Token and Execute Webhook (discord.com/developers/docs/resources/webhook)",
+    "request": {
+      "method": "GET",
+      "url": "{HERALD_DISCORD_WEBHOOK_URL}",
+      "headers": {
+        "User-Agent": "DiscordBot (https://pypi.org/project/herald-post/, {HERALD_VERSION})"
+      }
+    },
+    "response": {
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "message": "Unknown Webhook",
+        "code": 10015
+      }
+    }
+  }
+]

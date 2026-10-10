@@ -1,0 +1,26 @@
+[
+  {
+    "note": "createSession with an app password; AT Protocol, com.atproto.server.createSession and com.atproto.repo.createRecord (docs.bsky.app)",
+    "request": {
+      "method": "POST",
+      "url": "https://bsky.social/xrpc/com.atproto.server.createSession",
+      "json": {
+        "identifier": "{HERALD_BLUESKY_HANDLE}",
+        "password": "{HERALD_BLUESKY_APP_PASSWORD}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "did": "did:plc:z72i7hdynmk6r22z27h6tvur",
+        "handle": "herald-test.bsky.social",
+        "accessJwt": "eyJ0eXAiOiJhdCtqd3QiLCJhbGciOiJFUzI1NksifQ.session-access",
+        "refreshJwt": "eyJ0eXAiOiJyZWZyZXNoK2p3dCJ9.session-refresh",
+        "active": true
+      }
+    }
+  }
+]

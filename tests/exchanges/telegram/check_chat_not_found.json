@@ -1,0 +1,46 @@
+[
+  {
+    "note": "getMe, which answers for a valid token; Telegram Bot API, sendMessage, getMe and getChat (core.telegram.org/bots/api)",
+    "request": {
+      "method": "POST",
+      "url": "https://api.telegram.org/bot{HERALD_TELEGRAM_BOT_TOKEN}/getMe",
+      "json": {}
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "ok": true,
+        "result": {
+          "id": 123456,
+          "is_bot": true,
+          "first_name": "Herald",
+          "username": "herald_test_bot"
+        }
+      }
+    }
+  },
+  {
+    "note": "getChat for a chat the bot cannot see; Telegram Bot API, sendMessage, getMe and getChat (core.telegram.org/bots/api)",
+    "request": {
+      "method": "POST",
+      "url": "https://api.telegram.org/bot{HERALD_TELEGRAM_BOT_TOKEN}/getChat",
+      "json": {
+        "chat_id": "{HERALD_TELEGRAM_CHAT_ID}"
+      }
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "ok": false,
+        "error_code": 400,
+        "description": "Bad Request: chat not found"
+      }
+    }
+  }
+]

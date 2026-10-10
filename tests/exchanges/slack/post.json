@@ -1,0 +1,19 @@
+[
+  {
+    "note": "a message with &, < and > escaped as Slack asks; Slack incoming webhooks, including their documented error answers (api.slack.com/messaging/webhooks)",
+    "request": {
+      "method": "POST",
+      "url": "{HERALD_SLACK_WEBHOOK_URL}",
+      "json": {
+        "text": "Release 2.0 &lt;today&gt; &amp; notes: https://example.com/releases/2.0"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/html"
+      },
+      "text": "ok"
+    }
+  }
+]

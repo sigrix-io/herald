@@ -1,0 +1,23 @@
+[
+  {
+    "note": "userinfo refusing a revoked or lapsed token; LinkedIn Posts API (learn.microsoft.com/linkedin/marketing/community-management/shares/posts-api), OpenID Connect userinfo, and the OAuth 2.0 authorization code flow",
+    "request": {
+      "method": "GET",
+      "url": "https://api.linkedin.com/v2/userinfo",
+      "headers": {
+        "Authorization": "Bearer {HERALD_LINKEDIN_TOKEN}"
+      }
+    },
+    "response": {
+      "status": 401,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "serviceErrorCode": 65601,
+        "message": "The token used in the request has been revoked by the user",
+        "status": 401
+      }
+    }
+  }
+]

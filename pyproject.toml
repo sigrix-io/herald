@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Sigrix" }]
-keywords = ["announcements", "release notes", "changelog", "social media", "bluesky", "mastodon", "mcp"]
+keywords = ["announcements", "release notes", "changelog", "social media", "bluesky", "mastodon", "discord", "slack", "telegram", "linkedin"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -39,7 +39,13 @@ herald = "herald.cli:main"
 # Every channel, the built-in ones included, is found through this group, so a channel
 # another package registers here is as much a part of Herald as these.
 [project.entry-points."herald.channels"]
+bluesky = "herald.channels.bluesky:BlueskyChannel"
+discord = "herald.channels.discord:DiscordChannel"
+linkedin = "herald.channels.linkedin:LinkedInChannel"
+mastodon = "herald.channels.mastodon:MastodonChannel"
+slack = "herald.channels.slack:SlackChannel"
 stdout = "herald.channels.stdout:StdoutChannel"
+telegram = "herald.channels.telegram:TelegramChannel"
 
 [project.optional-dependencies]
 # regex is the tests' oracle for Unicode's grapheme clusters, and pyyaml reads the workflows
@@ -57,6 +63,10 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "S", "RUF"]
 ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+# The tests are full of stand-in credentials, which they then look for in Herald's output.
+"tests/**" = ["S105", "S106"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

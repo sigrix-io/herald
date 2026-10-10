@@ -1,0 +1,56 @@
+[
+  {
+    "note": "Get Webhook with Token, which needs no other authorisation; Discord API, Get Webhook with Token and Execute Webhook (discord.com/developers/docs/resources/webhook)",
+    "request": {
+      "method": "GET",
+      "url": "{HERALD_DISCORD_WEBHOOK_URL}",
+      "headers": {
+        "User-Agent": "DiscordBot (https://pypi.org/project/herald-post/, {HERALD_VERSION})"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "type": 1,
+        "id": "1234567890",
+        "name": "Herald",
+        "avatar": null,
+        "channel_id": "199737254929760256",
+        "guild_id": "197038439483310086",
+        "application_id": null,
+        "token": "discord-webhook-token-abcdef"
+      }
+    }
+  },
+  {
+    "note": "Discord's documented rate-limit answer; Discord API, Get Webhook with Token and Execute Webhook (discord.com/developers/docs/resources/webhook)",
+    "request": {
+      "method": "POST",
+      "url": "{HERALD_DISCORD_WEBHOOK_URL}?wait=true",
+      "headers": {
+        "User-Agent": "DiscordBot (https://pypi.org/project/herald-post/, {HERALD_VERSION})"
+      },
+      "json": {
+        "content": "Version 2.0 is out, @everyone: https://example.com/releases/2.0",
+        "allowed_mentions": {
+          "parse": []
+        }
+      }
+    },
+    "response": {
+      "status": 429,
+      "headers": {
+        "Content-Type": "application/json",
+        "Retry-After": "1"
+      },
+      "json": {
+        "message": "You are being rate limited.",
+        "retry_after": 0.5,
+        "global": false
+      }
+    }
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "note": "the bot was removed from the channel; Telegram Bot API, sendMessage, getMe and getChat (core.telegram.org/bots/api)",
+    "request": {
+      "method": "POST",
+      "url": "https://api.telegram.org/bot{HERALD_TELEGRAM_BOT_TOKEN}/sendMessage",
+      "json": {
+        "chat_id": "{HERALD_TELEGRAM_CHAT_ID}",
+        "text": "Version 2.0 is out: https://example.com/releases/2.0"
+      }
+    },
+    "response": {
+      "status": 403,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "ok": false,
+        "error_code": 403,
+        "description": "Forbidden: bot is not a member of the channel chat"
+      }
+    }
+  }
+]

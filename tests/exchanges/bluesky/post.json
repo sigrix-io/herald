@@ -1,0 +1,74 @@
+[
+  {
+    "note": "createSession with an app password; AT Protocol, com.atproto.server.createSession and com.atproto.repo.createRecord (docs.bsky.app)",
+    "request": {
+      "method": "POST",
+      "url": "https://bsky.social/xrpc/com.atproto.server.createSession",
+      "json": {
+        "identifier": "{HERALD_BLUESKY_HANDLE}",
+        "password": "{HERALD_BLUESKY_APP_PASSWORD}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "did": "did:plc:z72i7hdynmk6r22z27h6tvur",
+        "handle": "herald-test.bsky.social",
+        "accessJwt": "eyJ0eXAiOiJhdCtqd3QiLCJhbGciOiJFUzI1NksifQ.session-access",
+        "refreshJwt": "eyJ0eXAiOiJyZWZyZXNoK2p3dCJ9.session-refresh",
+        "active": true
+      }
+    }
+  },
+  {
+    "note": "createRecord of an app.bsky.feed.post with a link facet at UTF-8 byte offsets; AT Protocol, com.atproto.server.createSession and com.atproto.repo.createRecord (docs.bsky.app)",
+    "request": {
+      "method": "POST",
+      "url": "https://bsky.social/xrpc/com.atproto.repo.createRecord",
+      "headers": {
+        "Authorization": "Bearer eyJ0eXAiOiJhdCtqd3QiLCJhbGciOiJFUzI1NksifQ.session-access"
+      },
+      "json": {
+        "repo": "did:plc:z72i7hdynmk6r22z27h6tvur",
+        "collection": "app.bsky.feed.post",
+        "record": {
+          "$type": "app.bsky.feed.post",
+          "text": "Version 2.0 is out \u2014 read about it: https://example.com/releases/2.0",
+          "createdAt": "*",
+          "facets": [
+            {
+              "index": {
+                "byteStart": 38,
+                "byteEnd": 70
+              },
+              "features": [
+                {
+                  "$type": "app.bsky.richtext.facet#link",
+                  "uri": "https://example.com/releases/2.0"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "uri": "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3l2s5xxv2ze2c",
+        "cid": "bafyreig2fjxi3rptqdgylg7e5hmjl6mcke7rn2b6cugzlqq3i4zu6rq52q",
+        "commit": {
+          "cid": "bafyreia",
+          "rev": "3l2s5xxv7oj2c"
+        },
+        "validationStatus": "valid"
+      }
+    }
+  }
+]

@@ -1,0 +1,39 @@
+[
+  {
+    "note": "sendMessage to a public channel, whose username makes the post's link; Telegram Bot API, sendMessage, getMe and getChat (core.telegram.org/bots/api)",
+    "request": {
+      "method": "POST",
+      "url": "https://api.telegram.org/bot{HERALD_TELEGRAM_BOT_TOKEN}/sendMessage",
+      "json": {
+        "chat_id": "{HERALD_TELEGRAM_CHAT_ID}",
+        "text": "Version 2.0 is out: https://example.com/releases/2.0"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "ok": true,
+        "result": {
+          "message_id": 42,
+          "sender_chat": {
+            "id": -1001234567890,
+            "title": "Herald test",
+            "username": "herald_test",
+            "type": "channel"
+          },
+          "chat": {
+            "id": -1001234567890,
+            "title": "Herald test",
+            "username": "herald_test",
+            "type": "channel"
+          },
+          "date": 1760086800,
+          "text": "Version 2.0 is out: https://example.com/releases/2.0"
+        }
+      }
+    }
+  }
+]
