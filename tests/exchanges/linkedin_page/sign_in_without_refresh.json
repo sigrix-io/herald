@@ -1,0 +1,27 @@
+[
+  {
+    "note": "the authorization code exchanged for the page app's grant; the OAuth 2.0 authorization code flow (learn.microsoft.com/linkedin/shared/authentication/authorization-code-flow), and LinkedIn programmatic refresh tokens (learn.microsoft.com/linkedin/shared/authentication/programmatic-refresh-tokens)",
+    "request": {
+      "method": "POST",
+      "url": "https://www.linkedin.com/oauth/v2/accessToken",
+      "form": {
+        "grant_type": "authorization_code",
+        "code": "code-from-linkedin",
+        "redirect_uri": "*",
+        "client_id": "{HERALD_LINKEDIN_PAGE_CLIENT_ID}",
+        "client_secret": "{HERALD_LINKEDIN_PAGE_CLIENT_SECRET}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "access_token": "AQV-new-page-access-token-0123456789",
+        "expires_in": 5184000,
+        "scope": "w_organization_social"
+      }
+    }
+  }
+]

@@ -28,7 +28,7 @@ from herald.drafts import Draft, DraftItem, TooLong, prepare
 from herald.ledger import Entry, JsonLinesLedger, Ledger, LedgerBusy, default_ledger_dir
 from herald.posting import Outcome, UnknownDraft, check, post, preview, resolve
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Announcement",

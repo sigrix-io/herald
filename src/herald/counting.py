@@ -102,9 +102,12 @@ def _control(char: str) -> bool:
     return category == "Cn" and any(first <= code <= last for first, last in _IGNORABLE_UNASSIGNED)
 
 
-def graphemes(text: str) -> int:
-    """How many characters a reader sees in ``text``. An approximation that only ever counts high."""
-    count = 0
+def clusters(text: str) -> list[str]:
+    """``text`` cut into the characters a reader sees, as :func:`graphemes` counts them.
+
+    Where it cannot tell, it cuts, so a cluster here is never more than Unicode joins.
+    """
+    found: list[str] = []
     previous = ""
     sequence = _OUTSIDE
     lone_flag = False  # the current character is one regional indicator, open to its pair
@@ -116,17 +119,25 @@ def graphemes(text: str) -> int:
             elif sequence != _AFTER_PICTOGRAPH:
                 sequence = _OUTSIDE
             lone_flag = False
+            found[-1] += char
         elif sequence == _AFTER_JOINER and _pictograph(code):
             sequence = _AFTER_PICTOGRAPH
+            found[-1] += char
         elif lone_flag and code in _REGIONAL_INDICATORS:
             lone_flag = False
             sequence = _OUTSIDE
+            found[-1] += char
         else:
-            count += 1
+            found.append(char)
             sequence = _AFTER_PICTOGRAPH if _pictograph(code) else _OUTSIDE
             lone_flag = code in _REGIONAL_INDICATORS
         previous = char
-    return count
+    return found
+
+
+def graphemes(text: str) -> int:
+    """How many characters a reader sees in ``text``. An approximation that only ever counts high."""
+    return len(clusters(text))
 
 
 def utf16_length(text: str) -> int:
@@ -142,4 +153,4 @@ def with_links_as(text: str, weight: int) -> str:
     return LINK.sub("x" * weight, text)
 
 
-__all__ = ["LINK", "graphemes", "utf16_length", "with_links_as"]
+__all__ = ["LINK", "clusters", "graphemes", "utf16_length", "with_links_as"]

@@ -2,3 +2,8 @@ Herald
 Copyright 2026 Sigrix
 
 This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The X channel finds links as twitter-text does, the library by Twitter, Inc. that X's documentation
+names, licensed under the Apache License, Version 2.0, and holds twitter-text's lists of top-level
+domains. It names emoji sequences from Unicode's emoji-test.txt 12.0, Copyright 2019 Unicode, Inc.,
+used under the Unicode License (https://www.unicode.org/license.txt).

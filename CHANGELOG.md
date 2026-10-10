@@ -3,6 +3,27 @@
 Herald follows [semantic versioning](https://semver.org). Until 1.0, a minor version may change
 the channel interface or the ledger's interface, and its entry here says how.
 
+## 0.2.0 (unreleased)
+
+Two channels, and nothing that changes the channel or ledger interface.
+
+- `linkedin-page`: a post as an organisation, through LinkedIn's Community Management API, by a
+  page's administrator, content admin or direct sponsored content poster. `herald auth
+  linkedin-page` signs in once; an approved app gets a refresh token that lasts a year, and each
+  post renews an access token from it. An app LinkedIn gives no refresh token posts with the
+  60-day access token instead. `herald check` warns two weeks before either lapses.
+- `x`: a post through X's API, signed with the account's OAuth 1.0a keys, and counted as
+  twitter-text counts it, the library X's documentation names: 280, most characters 1, other
+  characters and every emoji 2, and every link 23, found where twitter-text finds one, with
+  twitter-text's lists of top-level domains. An emoji joined from others by U+200D weighs its
+  parts, so it counts high. X's API is paid, so the channel is off until its keys are set, and
+  `herald check` says what a post costs ($0.015, or $0.20 with a link, at X's prices of April
+  2026) instead of asking X, which bills every call.
+- `herald.counting.clusters` cuts text into the characters a reader sees, as `graphemes` counts
+  them.
+- An error that a platform words as an RFC 9457 problem, with `detail` and `title`, is quoted as
+  it says it.
+
 ## 0.1.0 (2026-10-10)
 
 The first release.

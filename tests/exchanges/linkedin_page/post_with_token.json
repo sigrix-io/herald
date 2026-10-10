@@ -1,0 +1,33 @@
+[
+  {
+    "note": "a post as the page: 201, with its URN in x-restli-id and no body; LinkedIn Posts API (learn.microsoft.com/linkedin/marketing/community-management/shares/posts-api)",
+    "request": {
+      "method": "POST",
+      "url": "https://api.linkedin.com/rest/posts",
+      "headers": {
+        "Authorization": "Bearer {HERALD_LINKEDIN_PAGE_TOKEN}",
+        "LinkedIn-Version": "202607",
+        "X-Restli-Protocol-Version": "2.0.0"
+      },
+      "json": {
+        "author": "urn:li:organization:2414183",
+        "commentary": "Version 2.0 is out: https://example.com/releases/2.0",
+        "visibility": "PUBLIC",
+        "distribution": {
+          "feedDistribution": "MAIN_FEED",
+          "targetEntities": [],
+          "thirdPartyDistributionChannels": []
+        },
+        "lifecycleState": "PUBLISHED",
+        "isReshareDisabledByAuthor": false
+      }
+    },
+    "response": {
+      "status": 201,
+      "headers": {
+        "x-restli-id": "urn:li:share:7239834567123456790"
+      },
+      "text": ""
+    }
+  }
+]

@@ -40,6 +40,113 @@ def escape(text: str) -> str:
     return "".join(f"\\{char}" if char in _RESERVED else char for char in text)
 
 
+def publish(author: str, text: str, token: str, version: str) -> PostResult:
+    """Post ``text`` as ``author``, a person's URN or an organisation's, through the Posts API."""
+    answer = http.post_json(
+        f"{API}/rest/posts",
+        {
+            "author": author,
+            "commentary": escape(text),
+            "visibility": "PUBLIC",
+            "distribution": {
+                "feedDistribution": "MAIN_FEED",
+                "targetEntities": [],
+                "thirdPartyDistributionChannels": [],
+            },
+            "lifecycleState": "PUBLISHED",
+            "isReshareDisabledByAuthor": False,
+        },
+        headers={
+            "Authorization": f"Bearer {token}",
+            "LinkedIn-Version": version,
+            "X-Restli-Protocol-Version": "2.0.0",
+        },
+    )
+    http.judge(answer, "LinkedIn")
+    urn = answer.headers.get("x-restli-id", "")
+    return PostResult(url=f"https://www.linkedin.com/feed/update/{urn}/" if urn else "", id=urn)
+
+
+def browser_sign_in(
+    client: str,
+    scopes: str,
+    *,
+    port: int,
+    open_browser: Callable[[str], object],
+    say: Callable[[str], object],
+    wait: float,
+) -> tuple[str, str]:
+    """Send the browser to LinkedIn's sign-in and wait for it to come back, once, for ``wait`` seconds.
+
+    LinkedIn sends the browser back to ``http://localhost:PORT/callback``, where a server on the
+    loopback address waits for it. Returns the authorization code and the address it came back to,
+    which exchanging the code needs.
+    """
+    state = secrets.token_urlsafe(24)
+    received: dict[str, str] = {}
+
+    class Callback(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            parts = urllib.parse.urlsplit(self.path)
+            if parts.path != "/callback":
+                self.send_error(404)
+                return
+            received.update(urllib.parse.parse_qsl(parts.query))
+            page = b"<!doctype html><title>Herald</title><p>Done. You can close this tab and go back to the terminal."
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(page)))
+            self.end_headers()
+            self.wfile.write(page)
+
+        def log_message(self, *args: Any) -> None:
+            """Say nothing: the request line holds the sign-in code."""
+
+    with HTTPServer(("127.0.0.1", port), Callback) as server:
+        redirect = f"http://localhost:{server.server_port}/callback"
+        query = {
+            "response_type": "code",
+            "client_id": client,
+            "redirect_uri": redirect,
+            "state": state,
+            "scope": scopes,
+        }
+        address = f"{OAUTH}/authorization?{urllib.parse.urlencode(query)}"
+        say(f"Sign in to LinkedIn in the browser. If none opens, visit:\n{address}")
+        open_browser(address)
+        server.timeout = 0.5
+        deadline = time.monotonic() + wait
+        while not received and time.monotonic() < deadline:
+            server.handle_request()
+    if not received:
+        raise TimeoutError(f"no sign-in came back within {wait:.0f} seconds")
+    if not secrets.compare_digest(received.get("state", ""), state):
+        raise ValueError("the sign-in came back for another request, so it was ignored")
+    if "error" in received:
+        raise ValueError(f"LinkedIn did not sign you in: {received.get('error_description') or received['error']}")
+    return received.get("code", ""), redirect
+
+
+def exchange_code(code: str, redirect: str, client: str, secret: str) -> dict[str, Any]:
+    """LinkedIn's grant for a sign-in's code: the access token, its lifetime, and any refresh token."""
+    answer = http.post_form(
+        f"{OAUTH}/accessToken",
+        {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect,
+            "client_id": client,
+            "client_secret": secret,
+        },
+    )
+    if not answer.ok:
+        raise ValueError(f"LinkedIn refused the sign-in ({answer.status}: {http.detail(answer)})")
+    grant = answer.json() or {}
+    if not str(grant.get("access_token") or ""):
+        raise ValueError("LinkedIn's answer to the sign-in held no token")
+    return grant
+
+
 class LinkedInChannel(Channel):
     name = "linkedin"
     label = "LinkedIn profile"
@@ -70,29 +177,8 @@ class LinkedInChannel(Channel):
 
     def post(self, text: str, env: Mapping[str, str]) -> PostResult:
         author = self._author(env)
-        answer = http.post_json(
-            f"{API}/rest/posts",
-            {
-                "author": author,
-                "commentary": escape(text),
-                "visibility": "PUBLIC",
-                "distribution": {
-                    "feedDistribution": "MAIN_FEED",
-                    "targetEntities": [],
-                    "thirdPartyDistributionChannels": [],
-                },
-                "lifecycleState": "PUBLISHED",
-                "isReshareDisabledByAuthor": False,
-            },
-            headers={
-                **self._bearer(env),
-                "LinkedIn-Version": self.setting(env, "HERALD_LINKEDIN_VERSION", DEFAULT_VERSION),
-                "X-Restli-Protocol-Version": "2.0.0",
-            },
-        )
-        http.judge(answer, "LinkedIn")
-        urn = answer.headers.get("x-restli-id", "")
-        return PostResult(url=f"https://www.linkedin.com/feed/update/{urn}/" if urn else "", id=urn)
+        version = self.setting(env, "HERALD_LINKEDIN_VERSION", DEFAULT_VERSION)
+        return publish(author, text, self.setting(env, "HERALD_LINKEDIN_TOKEN"), version)
 
     def _expires(self, env: Mapping[str, str]) -> datetime | None:
         """When the token lapses: as ``herald auth linkedin`` recorded it, else as LinkedIn says."""
@@ -173,66 +259,9 @@ class LinkedInChannel(Channel):
         )
         if not (client and secret):
             raise ValueError("set HERALD_LINKEDIN_CLIENT_ID and HERALD_LINKEDIN_CLIENT_SECRET, from the app's Auth tab")
-        state = secrets.token_urlsafe(24)
-        received: dict[str, str] = {}
-
-        class Callback(BaseHTTPRequestHandler):
-            def do_GET(self) -> None:
-                parts = urllib.parse.urlsplit(self.path)
-                if parts.path != "/callback":
-                    self.send_error(404)
-                    return
-                received.update(urllib.parse.parse_qsl(parts.query))
-                page = (
-                    b"<!doctype html><title>Herald</title><p>Done. You can close this tab and go back to the terminal."
-                )
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(page)))
-                self.end_headers()
-                self.wfile.write(page)
-
-            def log_message(self, *args: Any) -> None:
-                """Say nothing: the request line holds the sign-in code."""
-
-        with HTTPServer(("127.0.0.1", port), Callback) as server:
-            redirect = f"http://localhost:{server.server_port}/callback"
-            query = {
-                "response_type": "code",
-                "client_id": client,
-                "redirect_uri": redirect,
-                "state": state,
-                "scope": SCOPES,
-            }
-            address = f"{OAUTH}/authorization?{urllib.parse.urlencode(query)}"
-            say(f"Sign in to LinkedIn in the browser. If none opens, visit:\n{address}")
-            open_browser(address)
-            server.timeout = 0.5
-            deadline = time.monotonic() + wait
-            while not received and time.monotonic() < deadline:
-                server.handle_request()
-        if not received:
-            raise TimeoutError(f"no sign-in came back within {wait:.0f} seconds")
-        if not secrets.compare_digest(received.get("state", ""), state):
-            raise ValueError("the sign-in came back for another request, so it was ignored")
-        if "error" in received:
-            raise ValueError(f"LinkedIn did not sign you in: {received.get('error_description') or received['error']}")
-        grant_answer = http.post_form(
-            f"{OAUTH}/accessToken",
-            {
-                "grant_type": "authorization_code",
-                "code": received.get("code", ""),
-                "redirect_uri": redirect,
-                "client_id": client,
-                "client_secret": secret,
-            },
-        )
-        if not grant_answer.ok:
-            raise ValueError(f"LinkedIn refused the sign-in ({grant_answer.status}: {http.detail(grant_answer)})")
-        grant = grant_answer.json() or {}
-        token = str(grant.get("access_token") or "")
-        if not token:
-            raise ValueError("LinkedIn's answer to the sign-in held no token")
+        code, redirect = browser_sign_in(client, SCOPES, port=port, open_browser=open_browser, say=say, wait=wait)
+        grant = exchange_code(code, redirect, client, secret)
+        token = str(grant["access_token"])
         member_answer = http.get(f"{API}/v2/userinfo", headers=self._bearer(env, token))
         member = (member_answer.json() or {}) if member_answer.ok else {}
         settings = {"HERALD_LINKEDIN_TOKEN": token}
@@ -247,4 +276,4 @@ class LinkedInChannel(Channel):
         return SignIn(settings=settings, secret="HERALD_LINKEDIN_TOKEN", summary=summary)  # noqa: S106 - a name
 
 
-__all__ = ["LinkedInChannel", "escape"]
+__all__ = ["LinkedInChannel", "browser_sign_in", "escape", "exchange_code", "publish"]

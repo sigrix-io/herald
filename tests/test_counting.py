@@ -7,11 +7,12 @@ of what matters here is invisible.
 
 from __future__ import annotations
 
+import itertools
 import random
 
 import pytest
 
-from herald.counting import _PICTOGRAPHS, LINK, _extends, graphemes, with_links_as
+from herald.counting import _PICTOGRAPHS, LINK, _extends, clusters, graphemes, with_links_as
 
 regex = pytest.importorskip("regex")
 CLUSTER = regex.compile(r"\X")
@@ -87,6 +88,19 @@ def test_it_never_counts_below_unicode() -> None:
     for _ in range(50_000):
         text = chars(*(rng.choice(ALPHABET) for _ in range(rng.randint(1, 12))))
         assert graphemes(text) >= unicode_count(text), [hex(ord(char)) for char in text]
+
+
+def test_clusters_cut_the_text_wherever_unicode_does() -> None:
+    """The pieces make the text again, as many as graphemes counts, and each lies within one of
+    Unicode's: where it cannot tell, it cuts."""
+    rng = random.Random(6863)  # noqa: S311 - it picks test strings, not secrets
+    for _ in range(20_000):
+        text = chars(*(rng.choice(ALPHABET) for _ in range(rng.randint(1, 12))))
+        pieces = clusters(text)
+        assert "".join(pieces) == text
+        assert len(pieces) == graphemes(text)
+        unicode_cuts = set(itertools.accumulate(map(len, CLUSTER.findall(text))))
+        assert unicode_cuts <= set(itertools.accumulate(map(len, pieces))), [hex(ord(char)) for char in text]
 
 
 def test_every_pictograph_it_joins_is_one_to_unicode() -> None:

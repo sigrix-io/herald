@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.metadata
+from pathlib import Path
 
 import pytest
 
@@ -19,6 +20,7 @@ class Echo(Channel):
     name = "echo"
     label = "Echo"
 """
+README = Path(__file__).resolve().parent.parent / "README.md"
 
 
 def test_the_built_in_channel_comes_through_the_entry_point_group() -> None:
@@ -108,3 +110,33 @@ def test_a_channel_without_post_cannot_post() -> None:
 
     with pytest.raises(NotImplementedError, match="the mute channel cannot post"):
         Mute().post("Hello", {})
+
+
+def _readme_channels() -> dict[str, list[str]]:
+    """The README's Channels table: each row's cells after the channel's name, by that name."""
+    section = README.read_text(encoding="utf-8").split("\n## Channels\n", 1)[1]
+    rows: dict[str, list[str]] = {}
+    for line in section.splitlines():
+        if line.startswith("| `"):
+            name, *cells = (cell.strip() for cell in line.strip("|").split("|"))
+            rows[name.strip("`")] = cells
+        elif rows and not line.startswith("|"):
+            break
+    return rows
+
+
+def test_the_readme_gives_every_built_in_channel_a_row_with_its_limit_and_credentials() -> None:
+    """The README restates the channels, so it is held to the entry points that register them."""
+    rows = _readme_channels()
+    assert "stdout" in rows, "the sweep found the README's table"
+    built_in = {
+        entry.name: entry.load()
+        for entry in importlib.metadata.entry_points(group=ENTRY_POINT_GROUP)
+        if entry.value.startswith("herald.channels.")
+    }
+    assert sorted(rows) == sorted(built_in)
+    for name, channel in built_in.items():
+        limit, _counted, variables = rows[name]
+        assert limit.split(" ")[0].rstrip(",") == ("none" if channel.limit is None else f"{channel.limit:,}"), name
+        for credential in channel.credentials:
+            assert f"`{credential}`" in variables, f"{name}'s row names {credential}"

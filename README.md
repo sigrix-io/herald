@@ -88,7 +88,7 @@ herald preview announcement.json --to bluesky,mastodon
 | `herald check [--to CHANNEL]` | Check each channel's credentials, naming any that are missing and showing no value. |
 | `herald status [ANNOUNCEMENT_ID]` | Show what happened to each announcement on each channel. |
 | `herald resolve ANNOUNCEMENT_ID CHANNEL --posted/--not-posted` | Record what you found on a platform after a post's result went unrecorded. |
-| `herald auth linkedin` | Sign in to LinkedIn in the browser and hand over the token, to a pipe or a file only. |
+| `herald auth CHANNEL` | Sign in to LinkedIn in the browser, for `linkedin` or `linkedin-page`, and hand over the token, to a pipe or a file only. |
 | `herald mcp [--http]` | Serve `channels`, `preview`, `post` and `check` to an assistant or a workflow tool, over MCP. |
 
 Every command takes `--json` for a program to read, except `resolve`, `auth` and `mcp`. Exit
@@ -124,8 +124,8 @@ recorded, and any credential in them is replaced by its variable's name. A webho
 as a credential, so its path is replaced too. Every request goes over https, and a message names
 a platform's host, never a path, since a path can carry a token.
 
-`herald auth linkedin` is the one command that hands over a credential, because signing in is how
-LinkedIn gives one. It writes the token to a pipe or to a file you name, created readable by you
+`herald auth` is the one command that hands over a credential, because signing in is how LinkedIn
+gives one. It writes the token to a pipe or to a file you name, created readable by you
 alone, and refuses to print it on a terminal.
 
 ## Channels
@@ -138,6 +138,8 @@ alone, and refuses to print it on a terminal.
 | `slack` | 40,000 | UTF-16 code units, escaped | `HERALD_SLACK_WEBHOOK_URL` |
 | `telegram` | 4,096 | UTF-16 code units | `HERALD_TELEGRAM_BOT_TOKEN`, `HERALD_TELEGRAM_CHAT_ID` |
 | `linkedin` | 3,000 | UTF-16 code units, escaped | `HERALD_LINKEDIN_TOKEN`, from `herald auth linkedin` |
+| `linkedin-page` | 3,000 | UTF-16 code units, escaped | `HERALD_LINKEDIN_PAGE_ORGANIZATION`, with `HERALD_LINKEDIN_PAGE_REFRESH_TOKEN` from `herald auth linkedin-page` and the app's `HERALD_LINKEDIN_PAGE_CLIENT_ID` and `HERALD_LINKEDIN_PAGE_CLIENT_SECRET`, or `HERALD_LINKEDIN_PAGE_TOKEN` alone |
+| `x` | 280 | X's weights, a link as 23 | `HERALD_X_API_KEY`, `HERALD_X_API_SECRET`, `HERALD_X_ACCESS_TOKEN`, `HERALD_X_ACCESS_TOKEN_SECRET` |
 | `stdout` | none | | none |
 
 Where a platform counts in a way the standard library cannot match exactly, Herald counts high, so
@@ -178,7 +180,42 @@ herald auth linkedin | gh secret set HERALD_LINKEDIN_TOKEN      # or straight in
 The token lasts 60 days and LinkedIn will not refresh it, so `herald check` warns two weeks before
 it lapses; sign in again then. The file also holds `HERALD_LINKEDIN_AUTHOR`, which saves asking
 LinkedIn who the token belongs to, and `HERALD_LINKEDIN_TOKEN_EXPIRES`, which the warning reads.
-Posting as a company page needs LinkedIn's approval of the app first, and is not in this release.
+
+**LinkedIn page.** This posts as an organisation, on its page. It needs LinkedIn's Community
+Management API, which LinkedIn grants only after reviewing the company that asks, and only to an
+app with no other product, so the page needs an app of its own. At linkedin.com/developers, create
+one, verified by the page, request the Community Management API, and add
+`http://localhost:8765/callback` as a redirect URL. Once LinkedIn grants it, someone who is the
+page's administrator, content admin or direct sponsored content poster signs in:
+
+```bash
+export HERALD_LINKEDIN_PAGE_CLIENT_ID=... HERALD_LINKEDIN_PAGE_CLIENT_SECRET=...
+herald auth linkedin-page --output ~/.config/herald/linkedin-page.env
+```
+
+`HERALD_LINKEDIN_PAGE_ORGANIZATION` is the page's number, from its admin address,
+linkedin.com/company/NUMBER/admin. LinkedIn gives an approved app a refresh token that lasts a
+year from the sign-in, and each post renews an access token from it, so the page posts all year
+with nobody signing in again. Renewing needs the app's id and secret, so keep them set beside the
+refresh token. `herald check` renews once to see that the refresh token still works, and warns two
+weeks before its year is up. An app LinkedIn gives no refresh token gets an access token that
+lasts 60 days, saved as `HERALD_LINKEDIN_PAGE_TOKEN`, and the channel posts with that when it is
+set.
+
+**X.** X's API has no free tier: each post is paid for from credits bought in X's developer
+console, $0.015 a post or $0.20 when the post holds a link, at X's prices of April 2026. So nothing
+is posted to X until its four keys are set, and `herald check` says what a post costs instead of
+asking X, which bills every call to its API. In the developer console, create an app and set its
+permissions to read and write. Then, on the app's Keys and tokens page, generate its API key and
+secret and your access token and secret. Generate the access token after setting the permissions,
+since a token keeps the permissions it was made with. The keys do not lapse.
+
+X counts a post out of 280 as twitter-text does, the library X's documentation names, and Herald
+counts it the same way. Most letters and punctuation weigh 1. Chinese, Japanese and Korean
+characters and every emoji weigh 2. A link weighs 23, and Herald finds links where twitter-text
+does: with or without `https://`, straight after a word in Japanese, and only under a top-level
+domain on twitter-text's lists. An emoji joined from others by U+200D, such as a family, is one
+emoji to X, and weighs here what its parts weigh, so it counts high.
 
 ### What a failed post means
 
@@ -222,7 +259,7 @@ chatroom = "your_package.channels:Chatroom"
 Raise `NotPosted` only when nothing was posted. Any other exception leaves the post's fate
 unknown, and Herald then waits for a person rather than risk posting twice. A channel that counts
 differently overrides `count`; `herald.counting` has the pieces: `graphemes`, which only ever
-errs high, `utf16_length` and `with_links_as`. A channel that can ask its platform whether its
+errs high, `clusters`, the characters it counts, `utf16_length` and `with_links_as`. A channel that can ask its platform whether its
 credentials work overrides `check`. An application that does not want to package a channel can
 call `herald.register(Chatroom)` instead.
 
