@@ -1,0 +1,17 @@
+[
+  {
+    "note": "the request was sent and no answer came, and the error quotes the address, token and all, as some libraries do: the post may exist, and the token must not reach any output",
+    "request": {
+      "method": "POST",
+      "url": "https://api.telegram.org/bot{HERALD_TELEGRAM_BOT_TOKEN}/sendMessage",
+      "json": {
+        "chat_id": "{HERALD_TELEGRAM_CHAT_ID}",
+        "text": "Version 2.0 is out: https://example.com/releases/2.0"
+      }
+    },
+    "response": {
+      "raise": "TimeoutError",
+      "message": "timed out reading https://api.telegram.org/bot{HERALD_TELEGRAM_BOT_TOKEN}/sendMessage"
+    }
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "note": "Get Webhook with Token, which needs no other authorisation; Discord API, Get Webhook with Token and Execute Webhook (discord.com/developers/docs/resources/webhook)",
+    "request": {
+      "method": "GET",
+      "url": "https://discord.com/api/webhooks/1234567890/discord-webhook-token-abcdef?thread_id=555",
+      "headers": {
+        "User-Agent": "DiscordBot (https://pypi.org/project/herald-post/, {HERALD_VERSION})"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "type": 1,
+        "id": "1234567890",
+        "name": "Herald",
+        "avatar": null,
+        "channel_id": "199737254929760256",
+        "guild_id": "197038439483310086",
+        "application_id": null,
+        "token": "discord-webhook-token-abcdef"
+      }
+    }
+  },
+  {
+    "note": "Execute Webhook into a thread: the webhook's own query is kept and wait=true added; no mention may ping; Discord API, Get Webhook with Token and Execute Webhook (discord.com/developers/docs/resources/webhook)",
+    "request": {
+      "method": "POST",
+      "url": "https://discord.com/api/webhooks/1234567890/discord-webhook-token-abcdef?thread_id=555&wait=true",
+      "headers": {
+        "User-Agent": "DiscordBot (https://pypi.org/project/herald-post/, {HERALD_VERSION})"
+      },
+      "json": {
+        "content": "Version 2.0 is out, @everyone: https://example.com/releases/2.0",
+        "allowed_mentions": {
+          "parse": []
+        }
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "id": "1287654321098765432",
+        "type": 0,
+        "content": "Version 2.0 is out, @everyone: https://example.com/releases/2.0",
+        "channel_id": "199737254929760256",
+        "webhook_id": "1234567890",
+        "author": {
+          "id": "1234567890",
+          "username": "Herald",
+          "bot": true
+        }
+      }
+    }
+  }
+]

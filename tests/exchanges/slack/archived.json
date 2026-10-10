@@ -1,0 +1,19 @@
+[
+  {
+    "note": "the webhook's channel was archived; Slack incoming webhooks, including their documented error answers (api.slack.com/messaging/webhooks)",
+    "request": {
+      "method": "POST",
+      "url": "{HERALD_SLACK_WEBHOOK_URL}",
+      "json": {
+        "text": "Release 2.0"
+      }
+    },
+    "response": {
+      "status": 410,
+      "headers": {
+        "Content-Type": "text/html"
+      },
+      "text": "channel_is_archived"
+    }
+  }
+]

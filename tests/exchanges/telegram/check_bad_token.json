@@ -1,0 +1,21 @@
+[
+  {
+    "note": "getMe with a revoked token; Telegram Bot API, sendMessage, getMe and getChat (core.telegram.org/bots/api)",
+    "request": {
+      "method": "POST",
+      "url": "https://api.telegram.org/bot{HERALD_TELEGRAM_BOT_TOKEN}/getMe",
+      "json": {}
+    },
+    "response": {
+      "status": 401,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "ok": false,
+        "error_code": 401,
+        "description": "Unauthorized"
+      }
+    }
+  }
+]

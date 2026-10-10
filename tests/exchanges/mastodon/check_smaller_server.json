@@ -1,0 +1,47 @@
+[
+  {
+    "note": "GET /api/v1/accounts/verify_credentials; Mastodon API, POST /api/v1/statuses and GET /api/v2/instance (docs.joinmastodon.org)",
+    "request": {
+      "method": "GET",
+      "url": "https://mastodon.example/api/v1/accounts/verify_credentials",
+      "headers": {
+        "Authorization": "Bearer {HERALD_MASTODON_TOKEN}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "id": "1",
+        "username": "herald",
+        "acct": "herald",
+        "display_name": "Herald"
+      }
+    }
+  },
+  {
+    "note": "GET /api/v2/instance, whose configuration names the status limit; Mastodon API, POST /api/v1/statuses and GET /api/v2/instance (docs.joinmastodon.org)",
+    "request": {
+      "method": "GET",
+      "url": "https://mastodon.example/api/v2/instance"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "domain": "mastodon.example",
+        "configuration": {
+          "statuses": {
+            "max_characters": 400,
+            "max_media_attachments": 4,
+            "characters_reserved_per_url": 23
+          }
+        }
+      }
+    }
+  }
+]

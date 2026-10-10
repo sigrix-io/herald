@@ -129,9 +129,17 @@ def graphemes(text: str) -> int:
     return count
 
 
+def utf16_length(text: str) -> int:
+    """How long ``text`` is in UTF-16 code units, as JavaScript and Java count it.
+
+    A character outside the Basic Multilingual Plane, most emoji among them, counts two.
+    """
+    return len(text.encode("utf-16-le")) // 2
+
+
 def with_links_as(text: str, weight: int) -> str:
     """``text`` with every link replaced by ``weight`` placeholder characters, for counting."""
     return LINK.sub("x" * weight, text)
 
 
-__all__ = ["LINK", "graphemes", "with_links_as"]
+__all__ = ["LINK", "graphemes", "utf16_length", "with_links_as"]

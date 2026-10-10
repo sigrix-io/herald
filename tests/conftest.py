@@ -10,17 +10,19 @@ import importlib.metadata
 import socket
 import sys
 import textwrap
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 from typing import ClassVar
 
 import pytest
 
 import herald.channels as channels_module
+import herald.http
+from exchanges import Replay
 from herald import Channel, JsonLinesLedger, NotPosted, PostResult, register
 
 #: The fake channel's credential, as tests set it. Nothing Herald prints or records may contain it.
-TOKEN = "fake-token-6f1d0c9e2b"  # noqa: S105 - a test's stand-in, which the tests look for in output
+TOKEN = "fake-token-6f1d0c9e2b"
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -97,6 +99,22 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(socket, "getaddrinfo", refuse)
     monkeypatch.setattr(socket.socket, "connect", refuse)
     monkeypatch.setattr(socket.socket, "connect_ex", refuse)
+
+
+@pytest.fixture
+def replay(monkeypatch: pytest.MonkeyPatch) -> Iterator[Callable[[str, Mapping[str, str]], Replay]]:
+    """Answer the channels' requests from a recorded exchange file; fail on any exchange left unused."""
+    started: list[Replay] = []
+
+    def start(name: str, env: Mapping[str, str]) -> Replay:
+        replayed = Replay(name, env)
+        monkeypatch.setattr(herald.http, "transport", replayed)
+        started.append(replayed)
+        return replayed
+
+    yield start
+    for replayed in started:
+        assert not replayed.pending, f"{replayed.name}: {len(replayed.pending)} exchange(s) never requested"
 
 
 @pytest.fixture

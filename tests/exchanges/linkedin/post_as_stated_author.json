@@ -1,0 +1,33 @@
+[
+  {
+    "note": "a post created: 201, with its URN in x-restli-id and no body; LinkedIn Posts API (learn.microsoft.com/linkedin/marketing/community-management/shares/posts-api), OpenID Connect userinfo, and the OAuth 2.0 authorization code flow",
+    "request": {
+      "method": "POST",
+      "url": "https://api.linkedin.com/rest/posts",
+      "headers": {
+        "Authorization": "Bearer {HERALD_LINKEDIN_TOKEN}",
+        "LinkedIn-Version": "202607",
+        "X-Restli-Protocol-Version": "2.0.0"
+      },
+      "json": {
+        "author": "urn:li:person:782bbtaQ",
+        "commentary": "Version 2.0 \\(our biggest yet\\) is out: https://example.com/releases/2.0 \\#release",
+        "visibility": "PUBLIC",
+        "distribution": {
+          "feedDistribution": "MAIN_FEED",
+          "targetEntities": [],
+          "thirdPartyDistributionChannels": []
+        },
+        "lifecycleState": "PUBLISHED",
+        "isReshareDisabledByAuthor": false
+      }
+    },
+    "response": {
+      "status": 201,
+      "headers": {
+        "x-restli-id": "urn:li:share:7239834567123456789"
+      },
+      "text": ""
+    }
+  }
+]

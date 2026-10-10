@@ -1,0 +1,26 @@
+[
+  {
+    "note": "the server's own limit refused the status; Mastodon API, POST /api/v1/statuses and GET /api/v2/instance (docs.joinmastodon.org)",
+    "request": {
+      "method": "POST",
+      "url": "https://mastodon.example/api/v1/statuses",
+      "headers": {
+        "Authorization": "Bearer {HERALD_MASTODON_TOKEN}",
+        "Idempotency-Key": "*"
+      },
+      "json": {
+        "status": "Version 2.0 is out: https://example.com/releases/2.0",
+        "visibility": "public"
+      }
+    },
+    "response": {
+      "status": 422,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "error": "Validation failed: Text character limit of 500 exceeded"
+      }
+    }
+  }
+]

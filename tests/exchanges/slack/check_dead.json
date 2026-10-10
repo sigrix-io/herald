@@ -1,0 +1,17 @@
+[
+  {
+    "note": "an empty message to a webhook that was removed; Slack incoming webhooks, including their documented error answers (api.slack.com/messaging/webhooks)",
+    "request": {
+      "method": "POST",
+      "url": "{HERALD_SLACK_WEBHOOK_URL}",
+      "json": {}
+    },
+    "response": {
+      "status": 404,
+      "headers": {
+        "Content-Type": "text/html"
+      },
+      "text": "no_service"
+    }
+  }
+]

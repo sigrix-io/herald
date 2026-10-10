@@ -1,0 +1,17 @@
+[
+  {
+    "note": "an empty message, which a working webhook refuses without posting; Slack incoming webhooks, including their documented error answers (api.slack.com/messaging/webhooks)",
+    "request": {
+      "method": "POST",
+      "url": "{HERALD_SLACK_WEBHOOK_URL}",
+      "json": {}
+    },
+    "response": {
+      "status": 400,
+      "headers": {
+        "Content-Type": "text/html"
+      },
+      "text": "invalid_payload"
+    }
+  }
+]

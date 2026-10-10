@@ -1,0 +1,56 @@
+[
+  {
+    "note": "the member behind the token, from OpenID Connect userinfo; LinkedIn Posts API (learn.microsoft.com/linkedin/marketing/community-management/shares/posts-api), OpenID Connect userinfo, and the OAuth 2.0 authorization code flow",
+    "request": {
+      "method": "GET",
+      "url": "https://api.linkedin.com/v2/userinfo",
+      "headers": {
+        "Authorization": "Bearer {HERALD_LINKEDIN_TOKEN}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "sub": "782bbtaQ",
+        "name": "Ada Example",
+        "given_name": "Ada",
+        "family_name": "Example",
+        "locale": {
+          "country": "US",
+          "language": "en"
+        }
+      }
+    }
+  },
+  {
+    "note": "token introspection, which says when the token lapses; LinkedIn Posts API (learn.microsoft.com/linkedin/marketing/community-management/shares/posts-api), OpenID Connect userinfo, and the OAuth 2.0 authorization code flow",
+    "request": {
+      "method": "POST",
+      "url": "https://www.linkedin.com/oauth/v2/introspectToken",
+      "form": {
+        "client_id": "{HERALD_LINKEDIN_CLIENT_ID}",
+        "client_secret": "{HERALD_LINKEDIN_CLIENT_SECRET}",
+        "token": "{HERALD_LINKEDIN_TOKEN}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "active": true,
+        "client_id": "{HERALD_LINKEDIN_CLIENT_ID}",
+        "authorized_at": 1760000000,
+        "created_at": 1760000000,
+        "status": "active",
+        "expires_at": 4102444800,
+        "scope": "openid,profile,w_member_social",
+        "auth_type": "3L"
+      }
+    }
+  }
+]

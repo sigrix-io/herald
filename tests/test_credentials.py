@@ -7,7 +7,7 @@ import urllib.parse
 import pytest
 
 from conftest import TOKEN
-from herald import Announcement, post, preview
+from herald import Announcement, discover_channels, post, preview
 from herald.cli import main
 from herald.posting import redact
 
@@ -28,12 +28,24 @@ def test_check_names_a_missing_credential_without_a_value(fake, monkeypatch, cap
     assert TOKEN not in output
 
 
-def test_check_with_no_channel_named_checks_every_one(fake, capsys) -> None:
-    assert main(["check"]) == 0
-    assert capsys.readouterr().out.splitlines() == [
-        "fake: ready: credentials are set (not checked with the platform)",
-        "stdout: ready: needs no credentials",
-    ]
+def test_check_with_no_channel_named_checks_every_one(fake, monkeypatch, capsys) -> None:
+    """Every installed channel is checked; one without its credentials is named, offline, as not ready."""
+    others = [found for found in discover_channels() if found.name not in ("fake", "stdout")]
+    assert len(others) >= 6, "the built-in platform channels are installed"
+    for found in others:
+        for name in found.channel.credentials:
+            monkeypatch.delenv(name, raising=False)
+
+    assert main(["check"]) == 1
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[[found.name for found in discover_channels()].index("fake")] == (
+        "fake: ready: credentials are set (not checked with the platform)"
+    )
+    assert "stdout: ready: needs no credentials" in lines
+    for found in others:
+        [line] = [line for line in lines if line.startswith(f"{found.name}: ")]
+        assert line.startswith(f"{found.name}: not ready: set {found.channel.credentials[0]}")
 
 
 def test_a_check_that_quotes_the_token_shows_its_name(fake, monkeypatch, capsys) -> None:

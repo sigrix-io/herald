@@ -1,9 +1,8 @@
-"""The ``herald`` command: ``channels``, ``preview``, ``post``, ``check``, ``status`` and ``resolve``.
+"""The ``herald`` command: ``channels``, ``preview``, ``post``, ``check``, ``status``, ``resolve`` and ``auth``.
 
-Every command but ``check`` works offline, and ``preview`` never touches the network. ``post``
-takes only a draft id that ``preview`` printed. Exit status: 0 when the command did what it was
-asked, 1 when it did not (a channel not posted, text too long, a check that failed), 2 for a
-command used wrongly.
+``preview`` never touches the network, and ``post`` takes only a draft id that ``preview``
+printed. Exit status: 0 when the command did what it was asked, 1 when it did not (a channel not
+posted, text too long, a check that failed), 2 for a command used wrongly.
 """
 
 from __future__ import annotations
@@ -14,7 +13,8 @@ import os
 import shlex
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+import webbrowser
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict
 from pathlib import Path
 
@@ -78,7 +78,7 @@ def _channels(args: argparse.Namespace) -> int:
                 {
                     "name": found.name,
                     "label": found.channel.label,
-                    "limit": found.channel.limit,
+                    "limit": found.channel().limit,
                     "credentials": list(found.channel.credentials),
                     "source": found.source,
                 }
@@ -91,7 +91,7 @@ def _channels(args: argparse.Namespace) -> int:
         return 0
     rows = [("NAME", "LABEL", "LIMIT", "CREDENTIALS", "FROM")]
     for found in installed:
-        limit = found.channel.limit
+        limit = found.channel().limit
         credentials = ", ".join(found.channel.credentials) or "none"
         shown_limit = "none" if limit is None else str(limit)
         rows.append((found.name, found.channel.label, shown_limit, credentials, found.source))
@@ -207,6 +207,41 @@ def _resolve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _write_settings(path: Path, settings: Mapping[str, str]) -> None:
+    """Write ``NAME=value`` lines to ``path``, readable by its owner alone."""
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.chmod(path, 0o600)  # a file that already existed keeps its old mode through O_CREAT
+    with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as handle:
+        handle.writelines(f"{name}={value}\n" for name, value in settings.items())
+
+
+def _auth(args: argparse.Namespace) -> int:
+    channel = get_channel(args.channel)
+    sign_in = getattr(channel, "sign_in", None)
+    if not callable(sign_in):
+        needed = ", ".join(channel.credentials) or "nothing"
+        raise ValueError(f"the {channel.name} channel has no sign-in: set {needed} instead")
+    if args.output is None and sys.stdout.isatty():
+        raise ValueError(
+            f"that would print a credential on the terminal: pipe it into your secret store, as in "
+            f"herald auth {channel.name} | gh secret set NAME, or pass --output FILE"
+        )
+    result = sign_in(
+        os.environ,
+        port=args.port,
+        open_browser=(lambda address: None) if args.no_browser else webbrowser.open,
+        say=lambda text: print(text, file=sys.stderr),
+    )
+    if args.output is not None:
+        _write_settings(args.output, result.settings)
+        print(f"{result.summary} Saved {', '.join(result.settings)} to {args.output}.", file=sys.stderr)
+        return 0
+    print(result.settings[result.secret])
+    others = [f"{name}={value}" for name, value in result.settings.items() if name != result.secret]
+    print(result.summary + (f" Also set {', '.join(others)}." if others else ""), file=sys.stderr)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     ledger_option = argparse.ArgumentParser(add_help=False)
     ledger_option.add_argument(
@@ -275,6 +310,22 @@ def build_parser() -> argparse.ArgumentParser:
     found.add_argument("--posted", action="store_true", help="the post is there")
     found.add_argument("--not-posted", action="store_true", help="the post is not there, so a later post may send it")
     sub.add_argument("--url", default="", help="the post's link, with --posted")
+
+    sub = command(
+        "auth",
+        _auth,
+        "sign in to a platform whose credential comes from a sign-in (linkedin), and hand over the token",
+    )
+    sub.add_argument("channel", metavar="CHANNEL")
+    sub.add_argument(
+        "--output",
+        type=Path,
+        metavar="FILE",
+        help="write the settings to FILE, readable by you alone; without it the token goes to standard output, "
+        "which must be a pipe",
+    )
+    sub.add_argument("--port", type=int, default=8765, help="the local port the sign-in returns to (default: 8765)")
+    sub.add_argument("--no-browser", action="store_true", help="print the sign-in address instead of opening it")
     return parser
 
 
