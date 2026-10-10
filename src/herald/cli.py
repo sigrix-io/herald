@@ -1,4 +1,5 @@
-"""The ``herald`` command: ``channels``, ``preview``, ``post``, ``check``, ``status``, ``resolve`` and ``auth``.
+"""The ``herald`` command: ``channels``, ``preview``, ``post``, ``check``, ``status``, ``resolve``,
+``auth`` and ``mcp``.
 
 ``preview`` never touches the network, and ``post`` takes only a draft id that ``preview``
 printed. Exit status: 0 when the command did what it was asked, 1 when it did not (a channel not
@@ -18,20 +19,12 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-from herald import __version__
+from herald import __version__, mcp
 from herald.announcement import Announcement
-from herald.channels import ChannelConflict, CheckResult, UnknownChannel, discover_channels, get_channel
+from herald.channels import ChannelConflict, UnknownChannel, discover_channels, get_channel
 from herald.drafts import TooLong
 from herald.ledger import HOLDING, JsonLinesLedger, LedgerBusy
-from herald.posting import Outcome, UnknownDraft, post, preview, redact, resolve
-
-_OUTCOME_WORDS = {
-    "posted": "posted",
-    "already-posted": "already posted, so not again",
-    "needs-a-person": "needs a person",
-    "failed": "not posted",
-    "missing-credentials": "not posted",
-}
+from herald.posting import UnknownDraft, check, post, preview, resolve
 
 
 def _names(values: Sequence[str] | None) -> list[str]:
@@ -139,32 +132,18 @@ def _preview(args: argparse.Namespace) -> int:
     return 0
 
 
-def _describe(outcome: Outcome) -> str:
-    words = _OUTCOME_WORDS[outcome.status]
-    details = [part for part in (outcome.detail, outcome.url) if part]
-    return f"{outcome.channel}: {words}" + (f": {'; '.join(details)}" if details else "")
-
-
 def _post(args: argparse.Namespace) -> int:
     outcomes = post(args.draft_id, _ledger(args))
     if args.json:
         _print_json([asdict(outcome) for outcome in outcomes])
     else:
         for outcome in outcomes:
-            print(_describe(outcome))
+            print(outcome.describe())
     return 0 if all(outcome.ok for outcome in outcomes) else 1
 
 
 def _check(args: argparse.Namespace) -> int:
-    names = _names(args.to) or [found.name for found in discover_channels()]
-    results: list[tuple[str, CheckResult]] = []
-    for name in names:
-        channel = get_channel(name)
-        try:
-            result = channel.check(os.environ)
-        except Exception as error:
-            result = CheckResult(False, f"{type(error).__name__}: {error}")
-        results.append((name, CheckResult(result.ok, redact(result.detail, channel.credentials, os.environ))))
+    results = check(_names(args.to) or None)
     if args.json:
         _print_json([{"channel": name, **asdict(result)} for name, result in results])
     else:
@@ -240,6 +219,17 @@ def _auth(args: argparse.Namespace) -> int:
     others = [f"{name}={value}" for name, value in result.settings.items() if name != result.secret]
     print(result.summary + (f" Also set {', '.join(others)}." if others else ""), file=sys.stderr)
     return 0
+
+
+def _mcp(args: argparse.Namespace) -> int:
+    server = mcp.Server(_ledger(args))
+    if not args.http:
+        if args.host is not None or args.port is not None:
+            raise ValueError("--host and --port go with --http")
+        return mcp.run_stdio(server)
+    token = os.environ.get(mcp.TOKEN_VARIABLE, "").strip() or None
+    host = mcp.DEFAULT_HOST if args.host is None else args.host
+    return mcp.run_http(server, host, mcp.DEFAULT_PORT if args.port is None else args.port, token)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -326,6 +316,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub.add_argument("--port", type=int, default=8765, help="the local port the sign-in returns to (default: 8765)")
     sub.add_argument("--no-browser", action="store_true", help="print the sign-in address instead of opening it")
+
+    sub = command(
+        "mcp",
+        _mcp,
+        "serve channels, preview, post and check to an assistant or a workflow tool, over MCP: on standard "
+        "input and output, or over HTTP with --http",
+        ledger_option,
+    )
+    sub.add_argument("--http", action="store_true", help=f"serve over HTTP, at {mcp.ENDPOINT}")
+    sub.add_argument(
+        "--host",
+        help=f"the address to listen on, with --http (default: {mcp.DEFAULT_HOST}, this machine alone); any "
+        f"other needs {mcp.TOKEN_VARIABLE}",
+    )
+    sub.add_argument("--port", type=int, help=f"the port to listen on, with --http (default: {mcp.DEFAULT_PORT})")
     return parser
 
 

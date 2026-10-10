@@ -6,8 +6,8 @@ Herald fits an announcement to each channel, counted the way that platform count
 the exact text for every channel, then posts that text and nothing else, once. A ledger records
 every result, so running it twice never posts twice.
 
-It is a command, a Python library and a plugin interface. It uses the standard library only, and
-it talks to nothing but the platforms you post to.
+It is a command, a Python library, an MCP server and a plugin interface. It uses the standard
+library only, and it talks to nothing but the platforms you post to.
 
 ```bash
 pip install herald-post     # the command it installs is `herald`
@@ -87,10 +87,11 @@ herald preview announcement.json --to bluesky,mastodon
 | `herald status [ANNOUNCEMENT_ID]` | Show what happened to each announcement on each channel. |
 | `herald resolve ANNOUNCEMENT_ID CHANNEL --posted/--not-posted` | Record what you found on a platform after a post's result went unrecorded. |
 | `herald auth linkedin` | Sign in to LinkedIn in the browser and hand over the token, to a pipe or a file only. |
+| `herald mcp [--http]` | Serve `channels`, `preview`, `post` and `check` to an assistant or a workflow tool, over MCP. |
 
-Every command takes `--json` for a program to read, except `resolve` and `auth`. Exit status is 0 when the
-command did what it was asked and 1 when it did not, for example a channel not posted, text too
-long or a check that failed. Exit status 2 means the command itself was wrong.
+Every command takes `--json` for a program to read, except `resolve`, `auth` and `mcp`. Exit
+status is 0 when the command did what it was asked and 1 when it did not, for example a channel
+not posted, text too long or a check that failed. Exit status 2 means the command itself was wrong.
 
 ## The ledger
 
@@ -241,6 +242,61 @@ for outcome in post(draft.id, ledger):
 An application with a database of its own can implement `herald.Ledger` over it. Its `claim`
 must be atomic: of two processes claiming the same announcement and channel, only one may post.
 
+## As an MCP server
+
+`herald mcp` serves Herald to an assistant or a workflow tool over the Model Context Protocol, as
+four tools:
+
+| Tool | What it does |
+| --- | --- |
+| `channels` | Lists the channels Herald can post to, with each one's limit and any credential not set. |
+| `preview` | Fits an announcement to each channel and returns a draft id with each channel's exact text. Takes `channels` and `text`, and optionally `link`, `title`, `id` and `channel_texts`, text of a channel's own. Sends nothing. |
+| `post` | Posts a draft. It takes the draft id and nothing else, and refuses a call without one. |
+| `check` | Checks each channel's credentials, naming any that are missing and showing no value. |
+
+Since `post` takes only a draft id that `preview` returned, a model posts exactly the text a
+preview showed. The tools tell the model to show the person that text and to post only once they
+agree, and posting the same announcement twice posts it once. Each result comes as text, for a
+model to read, and, to a client of MCP 2025-06-18 or later, as `structuredContent` too, for a
+workflow. The server keeps drafts and results in the same ledger as the command, so `herald
+status` shows what an assistant posted.
+
+**Claude Code** starts it on your machine and talks to it over standard input and output:
+
+```bash
+claude mcp add herald -- herald mcp
+```
+
+Claude Code starts the server with its own environment, so the channel credentials set in the
+shell you start Claude Code from reach Herald. `claude mcp add herald -e NAME=value -- herald mcp`
+keeps one in Claude Code's configuration instead. Any assistant that starts an MCP server as a
+command runs Herald the same way.
+
+**n8n**, and any tool that reaches a server by its address, uses HTTP:
+
+```bash
+export HERALD_MCP_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+herald mcp --http     # http://127.0.0.1:8766/mcp
+```
+
+In n8n, an MCP Client node, or an MCP Client Tool under an AI Agent, connects to that endpoint with
+the HTTP Streamable transport and Bearer Auth holding the token. A node that previews passes
+`{{ $json.structuredContent.draft_id }}` to the node that posts, as its `draft_id`. An n8n with
+`N8N_SSRF_PROTECTION_ENABLED` set refuses private addresses such as this one until
+`N8N_SSRF_ALLOWED_HOSTNAMES` or `N8N_SSRF_ALLOWED_IP_RANGES` allows it.
+
+The server listens on 127.0.0.1 unless `--host` names another address. When `HERALD_MCP_TOKEN`
+is set, every request must carry it as `Authorization: Bearer <token>`, and without it the server
+will not listen beyond this machine at all. So when n8n runs in a container or on another machine,
+start Herald with the token and with `--host` set to an address n8n can reach. The token comes
+from the environment, never from an option, because anyone on the machine can read a command's
+options. The server refuses every request a browser page makes, which keeps a web page from
+reaching it through DNS rebinding.
+
+Herald speaks MCP revisions 2024-11-05 to 2025-11-25, which open with a handshake. A client of
+2026-07-28 asks in that revision first, is refused, and falls back to the handshake, as 2026-07-28
+provides.
+
 ## The rules it keeps
 
 - **Nobody's defaults.** Herald names no service, account or address of its own. It talks only to
@@ -257,7 +313,7 @@ must be atomic: of two processes claiming the same announcement and channel, onl
 Herald is one of [Sigrix](https://sigrix.io)'s open-source projects, and nothing in it is specific
 to Sigrix. Its neighbours on the map are planned rather than built: sigrix.io will announce each
 update it publishes on its Hub through Herald, keeping Herald's ledger in its own store, and
-Bailey, Sigrix's assistant, will reach Herald through Herald's MCP server. The rest of the family,
+Bailey, Sigrix's assistant, will reach Herald through `herald mcp`. The rest of the family,
 and how it fits together, is at [sigrix.io/open-source](https://sigrix.io/open-source).
 
 ## License

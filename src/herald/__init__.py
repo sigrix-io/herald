@@ -26,7 +26,7 @@ from herald.channels import (
 )
 from herald.drafts import Draft, DraftItem, TooLong, prepare
 from herald.ledger import Entry, JsonLinesLedger, Ledger, LedgerBusy, default_ledger_dir
-from herald.posting import Outcome, UnknownDraft, post, preview, resolve
+from herald.posting import Outcome, UnknownDraft, check, post, preview, resolve
 
 __version__ = "0.1.0"
 
@@ -51,6 +51,7 @@ __all__ = [
     "UnknownDraft",
     "__version__",
     "available_channels",
+    "check",
     "default_ledger_dir",
     "discover_channels",
     "get_channel",

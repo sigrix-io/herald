@@ -15,11 +15,19 @@ from dataclasses import dataclass
 from typing import Literal
 
 from herald.announcement import Announcement
-from herald.channels import Channel, NotPosted, available_channels, get_channel
+from herald.channels import Channel, CheckResult, NotPosted, available_channels, discover_channels, get_channel
 from herald.drafts import Draft, DraftItem, prepare
 from herald.ledger import Entry, Ledger, now
 
 Status = Literal["posted", "already-posted", "needs-a-person", "failed", "missing-credentials"]
+
+_STATUS_WORDS: dict[str, str] = {
+    "posted": "posted",
+    "already-posted": "already posted, so not again",
+    "needs-a-person": "needs a person",
+    "failed": "not posted",
+    "missing-credentials": "not posted",
+}
 
 #: A value this short is no secret worth the name, and replacing it would garble the message.
 _SHORTEST_SECRET = 6
@@ -42,6 +50,11 @@ class Outcome:
     def ok(self) -> bool:
         """Whether the channel carries the announcement, now or from an earlier post."""
         return self.status in ("posted", "already-posted")
+
+    def describe(self) -> str:
+        """The outcome in a line: the channel, what happened, then the detail and the post's link."""
+        details = [part for part in (self.detail, self.url) if part]
+        return f"{self.channel}: {_STATUS_WORDS[self.status]}" + (f": {'; '.join(details)}" if details else "")
 
 
 def preview(announcement: Announcement, channels: Sequence[str | Channel], ledger: Ledger) -> Draft:
@@ -156,6 +169,27 @@ def resolve(ledger: Ledger, announcement_id: str, channel: str, *, posted: bool,
     return entry
 
 
+def check(channels: Sequence[str] | None = None, env: Mapping[str, str] | None = None) -> list[tuple[str, CheckResult]]:
+    """Each channel's own check of its credentials: those named, or every installed channel.
+
+    Every name is looked up before any channel is checked, so a name no channel has raises
+    :class:`~herald.channels.UnknownChannel` before anything is asked of a platform. A check that
+    raises is reported as not ready, and any credential in a check's words is replaced by its
+    variable's name.
+    """
+
+    environment = os.environ if env is None else env
+    names = list(channels) if channels else [found.name for found in discover_channels()]
+    results = []
+    for channel in [get_channel(name) for name in names]:
+        try:
+            result = channel.check(environment)
+        except Exception as error:
+            result = CheckResult(False, f"{type(error).__name__}: {error}")
+        results.append((channel.name, CheckResult(result.ok, redact(result.detail, channel.credentials, environment))))
+    return results
+
+
 def redact(text: str, names: Iterable[str], env: Mapping[str, str]) -> str:
     """``text`` with each named variable's value, in any form it travels in, replaced by its name.
 
@@ -177,4 +211,4 @@ def redact(text: str, names: Iterable[str], env: Mapping[str, str]) -> str:
     return text
 
 
-__all__ = ["Outcome", "Status", "UnknownDraft", "post", "preview", "redact", "resolve"]
+__all__ = ["Outcome", "Status", "UnknownDraft", "check", "post", "preview", "redact", "resolve"]

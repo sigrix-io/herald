@@ -21,3 +21,9 @@ The first release.
   as not posted (safe to try again) or uncertain (left for a person).
 - The `herald` command: `channels`, `preview`, `post`, `check`, `status`, `resolve`, and
   `auth linkedin`, which signs in on localhost and hands the token only to a pipe or a file.
+- `herald mcp`: the tools `channels`, `preview`, `post` and `check` over the Model Context
+  Protocol, on standard input and output, or over HTTP with `--http`. `post` takes only a draft
+  id that `preview` returned. Over HTTP the server listens on 127.0.0.1 unless told otherwise,
+  needs a bearer token from `HERALD_MCP_TOKEN` to listen anywhere else, and refuses requests from
+  browser pages. It speaks MCP revisions 2024-11-05 to 2025-11-25.
+- `herald.check`: each channel's own check of its credentials, for a program.
