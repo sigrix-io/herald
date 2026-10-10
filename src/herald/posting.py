@@ -9,6 +9,8 @@ a platform after a post's fate was left unknown.
 from __future__ import annotations
 
 import os
+import re
+import shlex
 import urllib.parse
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
@@ -31,6 +33,9 @@ _STATUS_WORDS: dict[str, str] = {
 
 #: A value this short is no secret worth the name, and replacing it would garble the message.
 _SHORTEST_SECRET = 6
+
+#: What a shell on Windows passes on as it is, unquoted.
+_PLAIN = re.compile(r"[\w@%+=:,./\\-]+", re.ASCII)
 
 
 class UnknownDraft(LookupError):
@@ -145,8 +150,18 @@ def _held(entry: Entry) -> Outcome:
 def _check_by_hand(announcement_id: str, channel: str) -> str:
     return (
         f"It may have posted, so it will not be tried again: check {channel}, then run "
-        f"herald resolve {announcement_id} {channel} --posted (with --url) or --not-posted"
+        f"herald resolve {_shell_word(announcement_id)} {channel} --posted (with --url) or --not-posted"
     )
+
+
+def _shell_word(text: str) -> str:
+    """``text`` quoted for the shell a person here would paste it into, as a feed item's id may need.
+
+    On Windows, double quotes keep it whole in both cmd and PowerShell, which ``&`` would split.
+    """
+    if os.name != "nt":
+        return shlex.quote(text)
+    return text if text and _PLAIN.fullmatch(text) else '"' + text.replace('"', '""') + '"'
 
 
 def resolve(ledger: Ledger, announcement_id: str, channel: str, *, posted: bool, url: str = "") -> Entry:

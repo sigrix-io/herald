@@ -41,13 +41,96 @@ jobs:
       - run: python -m ruff format --check .
       - run: python -m pytest
 
+  # The action, as a repository uses it: three runs on fresh runners, which share the ledger
+  # only through the Actions cache. The first records the feed's one release and posts
+  # nothing, the next posts the release the feed gains, and the last posts nothing.
+  action-records:
+    name: The action records a feed
+    runs-on: ubuntu-latest
+    env:
+      LEDGER_NAME: ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: A feed with one release
+        run: cp tests/feeds/releases-one.atom "$RUNNER_TEMP/releases.atom"
+      - name: Watch it
+        uses: ./
+        with:
+          feed: ${{ runner.temp }}/releases.atom
+          to: stdout
+          ledger: ${{ env.LEDGER_NAME }}
+      - name: It posted nothing
+        run: herald status --ledger-dir "$RUNNER_TEMP/herald-ledger-$LEDGER_NAME" --json | jq -e 'length == 0'
+      - name: A live releases feed still has the shape the tests give theirs
+        run: |
+          python - <<'EOF'
+          from herald.feeds import read_feed
+
+          feed = read_feed("https://github.com/actions/checkout/releases.atom")
+          assert feed.title == "Release notes from checkout", feed.title
+          assert feed.items, "the feed held no releases"
+          for item in feed.items:
+              assert item.id.startswith("tag:github.com,2008:Repository/"), item.id
+              assert item.link.startswith("https://github.com/actions/checkout/releases/tag/"), item.link
+              assert item.title, item
+          print(f"Read {len(feed.items)} releases, each with an id, a title and a link like the tests'.")
+          EOF
+
+  action-posts:
+    name: The action posts what the feed gains
+    needs: action-records
+    runs-on: ubuntu-latest
+    env:
+      LEDGER_NAME: ci-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      ledger: ${{ steps.posted.outputs.ledger }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: The feed gains a release
+        run: cp tests/feeds/releases-two.atom "$RUNNER_TEMP/releases.atom"
+      - name: Watch it
+        uses: ./
+        with:
+          feed: ${{ runner.temp }}/releases.atom
+          to: stdout
+          ledger: ${{ env.LEDGER_NAME }}
+      - name: It posted the new release, and nothing else
+        id: posted
+        run: |
+          ledger="$RUNNER_TEMP/herald-ledger-$LEDGER_NAME"
+          herald status --ledger-dir "$ledger" --json | jq -e '
+            length == 1 and .[0].state == "posted" and .[0].channel == "stdout"
+            and .[0].announcement_id == "tag:github.com,2008:Repository/123456789/v1.2.0"'
+          echo "ledger=$(sha256sum "$ledger/ledger.jsonl" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+
+  action-again:
+    name: The action posts nothing twice
+    needs: action-posts
+    runs-on: ubuntu-latest
+    env:
+      LEDGER_NAME: ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: The same feed
+        run: cp tests/feeds/releases-two.atom "$RUNNER_TEMP/releases.atom"
+      - name: Watch it
+        uses: ./
+        with:
+          feed: ${{ runner.temp }}/releases.atom
+          to: stdout
+          ledger: ${{ env.LEDGER_NAME }}
+      - name: It posted nothing, so the ledger is as the last run left it
+        env:
+          BEFORE: ${{ needs.action-posts.outputs.ledger }}
+        run: test "$(sha256sum "$RUNNER_TEMP/herald-ledger-$LEDGER_NAME/ledger.jsonl" | cut -d ' ' -f 1)" = "$BEFORE"
+
   # The one check main requires. It always reports, and passes only when every job above
   # succeeded: a failed, cancelled or skipped job fails it, so a required check can never
   # wait on a job that did not run.
   ci-passed:
     name: ci-passed
     if: always()
-    needs: [test]
+    needs: [test, action-records, action-posts, action-again]
     runs-on: ubuntu-latest
     steps:
       - name: Every job passed

@@ -27,3 +27,11 @@ The first release.
   needs a bearer token from `HERALD_MCP_TOKEN` to listen anywhere else, and refuses requests from
   browser pages. It speaks MCP revisions 2024-11-05 to 2025-11-25.
 - `herald.check`: each channel's own check of its credentials, for a program.
+- `herald watch`: posts each new item of an RSS 2.0, RSS 1.0 or Atom feed, a repository's
+  releases included, once. Its first run for a feed and channel records what the feed holds and
+  posts none of it, and a run with more new items than `--most` posts none. A feed is read over
+  https or from a file only, and one that declares a DOCTYPE is refused. `herald.feeds` holds the
+  pieces for a program, and the ledger keeps what each feed held when first watched.
+- The GitHub Action, `action.yml`: `herald watch` on a schedule, with the ledger kept in the
+  Actions cache per name and git ref.
+- A suggested `herald resolve` command quotes an announcement id that a shell would split.

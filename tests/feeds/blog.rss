@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- RSS 2.0 as a WordPress blog writes it, with the cases an item can come in. -->
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>Widget &amp; Co. blog</title>
+  <atom:link href="https://blog.example/feed/" rel="self" type="application/rss+xml"/>
+  <link>https://blog.example</link>
+  <description>News from the widget makers</description>
+  <item>
+    <title>Widgets, now &lt;faster&gt;</title>
+    <link>https://blog.example/2026/10/faster-widgets/</link>
+    <dc:creator><![CDATA[octo]]></dc:creator>
+    <pubDate>Wed, 08 Oct 2026 09:30:00 +0000</pubDate>
+    <guid isPermaLink="false">https://blog.example/?p=123&amp;lang=en</guid>
+    <description><![CDATA[<p>Faster.</p>]]></description>
+  </item>
+  <item>
+    <title><![CDATA[A title
+        that runs across lines]]></title>
+    <guid>https://blog.example/2026/09/across-lines/</guid>
+  </item>
+  <item>
+    <description>An item with no title, no link and no guid, so nothing to know it by.</description>
+  </item>
+  <item>
+    <title>A title and nothing else</title>
+  </item>
+  <item>
+    <title>A link that is not the web</title>
+    <link>ftp://files.example/widget.zip</link>
+    <guid isPermaLink="false">widget-zip</guid>
+  </item>
+</channel>
+</rss>

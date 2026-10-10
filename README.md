@@ -6,8 +6,9 @@ Herald fits an announcement to each channel, counted the way that platform count
 the exact text for every channel, then posts that text and nothing else, once. A ledger records
 every result, so running it twice never posts twice.
 
-It is a command, a Python library, an MCP server and a plugin interface. It uses the standard
-library only, and it talks to nothing but the platforms you post to.
+It is a command, a GitHub Action, a Python library, an MCP server and a plugin interface. It uses
+the standard library only, and it talks to nothing but the platforms you post to and the feeds you
+watch.
 
 ```bash
 pip install herald-post     # the command it installs is `herald`
@@ -83,6 +84,7 @@ herald preview announcement.json --to bluesky,mastodon
 | `herald channels` | List the channels you can post to, their limits, the credentials they read and the package each comes from. |
 | `herald preview [FILE] --to CHANNEL` | Fit an announcement to each channel and show exactly what it will get. Sends nothing. |
 | `herald post DRAFT_ID` | Post that draft, once per channel. |
+| `herald watch FEED --to CHANNEL` | Post each new item of an RSS or Atom feed, such as a repository's releases, once. |
 | `herald check [--to CHANNEL]` | Check each channel's credentials, naming any that are missing and showing no value. |
 | `herald status [ANNOUNCEMENT_ID]` | Show what happened to each announcement on each channel. |
 | `herald resolve ANNOUNCEMENT_ID CHANNEL --posted/--not-posted` | Record what you found on a platform after a post's result went unrecorded. |
@@ -96,7 +98,8 @@ not posted, text too long or a check that failed. Exit status 2 means the comman
 ## The ledger
 
 The ledger keeps every draft a preview made and what happened to each announcement on each
-channel: *drafted*, then *sending*, then *posted* or *failed*. By default it lives in
+channel: *drafted*, then *sending*, then *posted* or *failed*. For `herald watch`, it also keeps
+what each feed held when it was first watched into each channel. By default it lives in
 `~/.local/state/herald`. Set `$XDG_STATE_HOME` or `$HERALD_LEDGER_DIR`, or pass `--ledger-dir`,
 to keep it elsewhere, such as in a directory a CI job caches between runs.
 
@@ -222,6 +225,93 @@ differently overrides `count`; `herald.counting` has the pieces: `graphemes`, wh
 errs high, `utf16_length` and `with_links_as`. A channel that can ask its platform whether its
 credentials work overrides `check`. An application that does not want to package a channel can
 call `herald.register(Chatroom)` instead.
+
+## Watching a feed
+
+`herald watch` posts each new item of an RSS or Atom feed once. A repository's releases are a feed,
+at `https://github.com/OWNER/REPO/releases.atom`:
+
+```bash
+herald watch https://github.com/octo/widget/releases.atom --to bluesky,mastodon
+```
+
+The first run for a feed and a channel records the items the feed holds and posts none of them, so
+turning a watch on never floods a channel with old items, and adding a channel later never floods
+that one. Each run after that posts what the feed gained, oldest first. An item is known by its own
+id, its Atom id or RSS guid, and becomes an announcement with that id, so the ledger posts it once,
+and a post that failed is tried again on the next run, as any post is.
+
+A post says the item's title, and its link is added. `--text` says something else, with `{title}`,
+`{link}` and `{feed}`, the feed's title, filled in: `--text "{feed}: {title}"`. A run that finds
+more new items than `--most`, 5 unless you say, posts none of them and exits 1, because that many at
+once usually means the feed changed its items' ids and they are old ones. Run it again with
+`--mark-seen` to record them all as seen, or with a larger `--most` to post them.
+
+A feed is read over https or from a file, never over plain http, so that nobody on the way can
+change what gets posted. A feed that declares a DOCTYPE is refused: no feed needs one, and one can
+hide an XML attack.
+
+## As a GitHub Action
+
+The action runs `herald watch` and keeps the ledger in the Actions cache between runs, so a
+repository announces each of its releases once, on a schedule. GitHub-hosted runners cost a public
+repository nothing. Put each channel's credentials in the repository's secrets, and save this as
+`.github/workflows/announce.yml`:
+
+```yaml
+name: Announce releases
+
+on:
+  schedule:
+    - cron: "17 * * * *"  # every hour
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run at a time: two at once could both post a release.
+concurrency:
+  group: announce
+  cancel-in-progress: false
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: sigrix-io/herald@v0.1.0
+        with:
+          to: bluesky,mastodon
+        env:
+          HERALD_BLUESKY_HANDLE: ${{ secrets.HERALD_BLUESKY_HANDLE }}
+          HERALD_BLUESKY_APP_PASSWORD: ${{ secrets.HERALD_BLUESKY_APP_PASSWORD }}
+          HERALD_MASTODON_SERVER: ${{ secrets.HERALD_MASTODON_SERVER }}
+          HERALD_MASTODON_TOKEN: ${{ secrets.HERALD_MASTODON_TOKEN }}
+```
+
+The first run records the releases there are and posts none. The first run after a new release
+posts it, and the next posts nothing. With `to: stdout`, a run shows its posts in its log instead.
+
+| Input | What it is | Default |
+| --- | --- | --- |
+| `to` | The channels to post to, separated by commas. | none: give it |
+| `feed` | The feed to watch, an https address or a file. | this repository's `releases.atom` |
+| `text` | What each post says, with `{title}`, `{link}` and `{feed}` filled in. | `{title}` |
+| `most` | The most items one run posts. | `5` |
+| `ledger` | The name the ledger is cached under. Give each watch in a repository its own. | `herald` |
+
+What the cache means for a watch:
+
+- Runs share the ledger only through the cache, so let one run at a time, as `concurrency` does
+  above.
+- Each git ref keeps a ledger of its own. Run the workflow on a schedule, or by hand from the
+  default branch. A run on another ref, such as a release's tag, finds no ledger, so it records
+  what the feed holds and posts nothing. That is why the workflow above is not started by
+  `release` events.
+- GitHub drops a cache nobody has read for 7 days, so run the workflow at least daily. After a
+  longer gap, a run starts over: it records what the feed holds and posts nothing.
+- GitHub pauses the schedule of a public repository that has seen no activity for 60 days.
+- If the ledger cannot be saved after a run, the run fails, since the next one would not know what
+  this one posted. Check the platforms before the next run.
 
 ## As a library
 
