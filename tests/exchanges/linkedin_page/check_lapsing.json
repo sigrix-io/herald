@@ -1,0 +1,28 @@
+[
+  {
+    "note": "a refresh token with ten days left; LinkedIn programmatic refresh tokens (learn.microsoft.com/linkedin/shared/authentication/programmatic-refresh-tokens)",
+    "request": {
+      "method": "POST",
+      "url": "https://www.linkedin.com/oauth/v2/accessToken",
+      "form": {
+        "grant_type": "refresh_token",
+        "refresh_token": "{HERALD_LINKEDIN_PAGE_REFRESH_TOKEN}",
+        "client_id": "{HERALD_LINKEDIN_PAGE_CLIENT_ID}",
+        "client_secret": "{HERALD_LINKEDIN_PAGE_CLIENT_SECRET}"
+      }
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "json": {
+        "access_token": "AQV-page-access-token-0123456789",
+        "expires_in": 5184000,
+        "refresh_token": "{HERALD_LINKEDIN_PAGE_REFRESH_TOKEN}",
+        "refresh_token_expires_in": 867600,
+        "scope": "w_organization_social"
+      }
+    }
+  }
+]

@@ -369,7 +369,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub = command(
         "auth",
         _auth,
-        "sign in to a platform whose credential comes from a sign-in (linkedin), and hand over the token",
+        "sign in to a platform whose credential comes from a sign-in (linkedin, linkedin-page), and hand over "
+        "the token",
     )
     sub.add_argument("channel", metavar="CHANNEL")
     sub.add_argument(

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import io
 import os
+import re
 import sys
-import threading
 import urllib.parse
 import urllib.request
 from datetime import UTC, datetime, timedelta
@@ -15,6 +15,7 @@ import pytest
 from herald import CheckResult, NotPosted, SignIn, http
 from herald.channels.linkedin import LinkedInChannel, escape
 from herald.cli import main
+from linkedin_browser import browser
 
 ENV = {"HERALD_LINKEDIN_TOKEN": "linkedin-token-0123456789"}
 APP = {"HERALD_LINKEDIN_CLIENT_ID": "86abcdefghijkl", "HERALD_LINKEDIN_CLIENT_SECRET": "linkedin-client-secret-xyz"}
@@ -88,25 +89,13 @@ def test_check_fails_for_a_lapsed_token(replay) -> None:
     )
 
 
-def _browser(code: str = "code-from-linkedin", *, state: str | None = None, error: str = ""):
-    """A browser that follows the sign-in address back to the callback, from another thread."""
-
-    def follow(address: str) -> None:
-        query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(address).query))
-        back = {"state": state if state is not None else query["state"]}
-        back.update({"error": error, "error_description": "The member cancelled"} if error else {"code": code})
-        callback = query["redirect_uri"].replace("localhost", "127.0.0.1") + "?" + urllib.parse.urlencode(back)
-        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-        threading.Thread(target=lambda: opener.open(callback, timeout=5).read(), daemon=True).start()
-
-    return follow
-
-
 def test_signing_in_returns_the_token_the_member_and_when_it_lapses(replay) -> None:
     replay("linkedin/sign_in", {**ENV, **APP})
-    said: list[str] = []
+    sent_to: list[str] = []
 
-    result = LinkedInChannel().sign_in(APP, port=0, open_browser=_browser(), say=said.append, wait=10)
+    result = LinkedInChannel().sign_in(
+        APP, port=0, open_browser=browser(sent_to=sent_to), say=lambda text: None, wait=10
+    )
 
     assert result.secret == "HERALD_LINKEDIN_TOKEN"
     assert result.settings["HERALD_LINKEDIN_TOKEN"] == "AQX-new-linkedin-token-0123456789"
@@ -114,21 +103,43 @@ def test_signing_in_returns_the_token_the_member_and_when_it_lapses(replay) -> N
     lapses = datetime.fromisoformat(result.settings["HERALD_LINKEDIN_TOKEN_EXPIRES"])
     assert timedelta(days=59) < lapses - datetime.now(UTC) <= timedelta(days=60)
     assert result.summary.startswith("Signed in as Ada Example. The token lasts until ")
-    assert "scope=openid+profile+w_member_social" in said[0]
-    assert "redirect_uri=http%3A%2F%2Flocalhost%3A" in said[0]
+    [sign_in] = sent_to
+    assert sign_in.startswith("https://www.linkedin.com/oauth/v2/authorization?")
+    assert "scope=openid+profile+w_member_social" in sign_in
+    assert "redirect_uri=http%3A%2F%2Flocalhost%3A" in sign_in
+
+
+def test_the_terminal_and_the_browser_get_only_the_start_page_on_this_machine(replay) -> None:
+    """LinkedIn's address holds the app's id and the sign-in's state, so neither is printed or
+    handed to the program that opens the browser: the start page sends the browser on to it."""
+    replay("linkedin/sign_in", {**ENV, **APP})
+    said: list[str] = []
+    opened: list[str] = []
+    sent_to: list[str] = []
+
+    LinkedInChannel().sign_in(
+        APP, port=0, open_browser=browser(opened=opened, sent_to=sent_to), say=said.append, wait=10
+    )
+
+    [start] = opened
+    assert re.fullmatch(r"http://localhost:\d+/", start)
+    assert said == [f"Sign in to LinkedIn in the browser. If none opens, visit {start}"]
+    state = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(sent_to[0]).query))["state"]
+    for secret in (state, APP["HERALD_LINKEDIN_CLIENT_ID"]):
+        assert secret not in said[0] and secret not in start
 
 
 def test_a_callback_for_another_sign_in_is_ignored(monkeypatch) -> None:
     monkeypatch.setattr(http, "transport", lambda request, timeout: pytest.fail("the code was exchanged"))
     with pytest.raises(ValueError, match="came back for another request"):
-        LinkedInChannel().sign_in(APP, port=0, open_browser=_browser(state="forged"), say=lambda text: None, wait=10)
+        LinkedInChannel().sign_in(APP, port=0, open_browser=browser(state="forged"), say=lambda text: None, wait=10)
 
 
 def test_a_cancelled_sign_in_says_why(monkeypatch) -> None:
     monkeypatch.setattr(http, "transport", lambda request, timeout: pytest.fail("the code was exchanged"))
     with pytest.raises(ValueError, match="LinkedIn did not sign you in: The member cancelled"):
         LinkedInChannel().sign_in(
-            APP, port=0, open_browser=_browser(error="user_cancelled_login"), say=lambda text: None, wait=10
+            APP, port=0, open_browser=browser(error="user_cancelled_login"), say=lambda text: None, wait=10
         )
 
 

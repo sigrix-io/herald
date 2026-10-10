@@ -1,5 +1,5 @@
 name: Herald
-description: Announce each new release, or each new item of any RSS or Atom feed, on Bluesky, Mastodon, Discord, Slack, Telegram or LinkedIn, once.
+description: Announce each new release, or each new item of any RSS or Atom feed, on Bluesky, Mastodon, Discord, Slack, Telegram, LinkedIn or X, once.
 branding:
   icon: radio
   color: purple

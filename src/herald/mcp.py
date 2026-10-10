@@ -69,11 +69,11 @@ INTERNAL_ERROR = -32603
 
 INSTRUCTIONS = (
     "Herald posts one announcement to the channels a person chooses, such as Bluesky, Mastodon, Discord, "
-    "Slack, Telegram or a LinkedIn profile. Call preview first: it fits the announcement to each channel and "
-    "returns a draft id and the exact text each channel will get, and it sends nothing. Show the person every "
-    "channel's text exactly as preview returned it, and call post with that draft id only after they agree. "
-    "post sends exactly that text, once per announcement and channel. To change anything, preview again and "
-    "show the new draft."
+    "Slack, Telegram, a LinkedIn profile or page, or X. Call preview first: it fits the announcement to each "
+    "channel and returns a draft id and the exact text each channel will get, and it sends nothing. Show the "
+    "person every channel's text exactly as preview returned it, and call post with that draft id only after "
+    "they agree. post sends exactly that text, once per announcement and channel. To change anything, preview "
+    "again and show the new draft."
 )
 
 _NO_ARGUMENTS: dict[str, Any] = {"type": "object", "properties": {}, "additionalProperties": False}

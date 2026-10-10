@@ -84,10 +84,13 @@ def where(url: str) -> str:
 
 
 def detail(answer: Response) -> str:
-    """What the platform said, in a line: its error message if it gave one, else its text."""
+    """What the platform said, in a line: its error message if it gave one, else its text.
+
+    ``detail`` and ``title`` are where an RFC 9457 problem, as X's API answers, says it.
+    """
     data = answer.json()
     if isinstance(data, dict):
-        for key in ("message", "error_description", "description", "error"):
+        for key in ("message", "error_description", "description", "error", "detail", "title"):
             value = data.get(key)
             if isinstance(value, str) and value.strip():
                 return value.strip()[:300]
