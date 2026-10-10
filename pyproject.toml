@@ -42,8 +42,9 @@ herald = "herald.cli:main"
 stdout = "herald.channels.stdout:StdoutChannel"
 
 [project.optional-dependencies]
-# regex is the tests' oracle for Unicode's grapheme clusters; herald itself never imports it.
-dev = ["pytest>=8", "regex>=2024.11.6", "ruff>=0.6"]
+# regex is the tests' oracle for Unicode's grapheme clusters, and pyyaml reads the workflows
+# for tests/test_workflows.py; herald itself imports neither.
+dev = ["pytest>=8", "pyyaml>=6", "regex>=2024.11.6", "ruff>=0.6"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/herald"]

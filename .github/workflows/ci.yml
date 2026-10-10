@@ -4,9 +4,18 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The merge queue tests each pull request merged onto main before main moves, and waits
+  # for ci-passed on that run; without this trigger the check never arrives.
+  merge_group:
 
 permissions:
   contents: read
+
+concurrency:
+  # A merge group carries no pull request number. Keyed by the number alone, every queue
+  # entry would share one key, and each would cancel the one ahead of it.
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -31,3 +40,23 @@ jobs:
       - run: python -m ruff check .
       - run: python -m ruff format --check .
       - run: python -m pytest
+
+  # The one check main requires. It always reports, and passes only when every job above
+  # succeeded: a failed, cancelled or skipped job fails it, so a required check can never
+  # wait on a job that did not run.
+  ci-passed:
+    name: ci-passed
+    if: always()
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every job passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          for result in $RESULTS; do
+            if [ "$result" != "success" ]; then
+              echo "::error::A job this check needs ended '$result'."
+              exit 1
+            fi
+          done
