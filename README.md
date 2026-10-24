@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/sigrix-io/herald/main/.github/assets/logo-on-dark.svg">
+    <img src="https://raw.githubusercontent.com/sigrix-io/herald/main/.github/assets/logo.svg" alt="Herald" width="120">
+  </picture>
+</p>
+
 # Herald
 
 Post one announcement to every channel you choose, after showing exactly what each one will get.
